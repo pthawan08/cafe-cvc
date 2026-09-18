@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CVC Cafe - สั่งเครื่องดื่ม</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- โหลดไลบรารี LINE LIFF และ Supabase -->
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --primary: #A07855; --bg: #FBF9F6; --text: #4A4A4A; --light: #F2EFE9; --accent: #D5BDAF; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; }
@@ -106,7 +108,7 @@
     </div>
 
     <div class="section-title" id="menu-title">เมนูแนะนำ</div>
-    <div id="loading">กำลังโหลดเมนูจากระบบ... ⏳</div>
+    <div id="loading">กำลังเชื่อมต่อฐานข้อมูล... ⏳</div>
     <div class="menu-grid" id="menu-container"></div>
 
     <div class="bottom-nav">
@@ -125,11 +127,10 @@
         <div class="modal-header" id="m-name">ชื่อเมนู</div>
         <div class="modal-price">฿<span id="m-price">0</span></div>
         
-        <!-- 🌟 เพิ่ม Group เลือก ร้อน/เย็น/ปั่น ตรงนี้ -->
         <div class="option-group" id="serve-type-group">
             <div class="option-title">ประเภท <span style="color:var(--primary)">*</span></div>
             <div class="radio-grid" id="serve-options">
-                <!-- ปุ่มจะถูกสร้างอัตโนมัติตามราคาที่มีใน Sheet -->
+                <!-- ปุ่มจะถูกสร้างอัตโนมัติตามราคาที่มีใน Database -->
             </div>
         </div>
 
@@ -165,7 +166,12 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzNuf6uM-uH2gnOMD_b9zxmWNZSOtMjzHX-_z5rJJ3V0Gz9zYlutHHTW5Vfe_WcYrUz/exec";
+    // 🔴 1. ข้อมูลเชื่อมต่อ Supabase ของคุณ
+    const SUPABASE_URL = "https://zkjnamlcnffsuqzvkznx.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpram5hbWxjbmZmc3VxenZrem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTk3MjIsImV4cCI6MjEwNTI5NTcyMn0.yUCmqbe5_tjsOBNEfx7qPXkmUiuoL5IX_y-tdjJuITY";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // 🔴 2. อย่าลืมใส่ LIFF ID ของคุณ
     const LIFF_ID = "2009434275-8CCxzLOq"; 
 
     let allMenuItems = []; 
@@ -193,17 +199,24 @@
         }
     }
 
-    function fetchMenu() {
-        fetch(API_URL + "?action=getCustomerData")
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('loading').style.display = 'none';
-                allMenuItems = data.menu; 
-                filterCategory('ทั้งหมด'); 
-            })
-            .catch(err => {
-                document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ";
-            });
+    // 🚀 ดึงข้อมูลจาก Supabase โดยตรง เร็วกว่าเดิมเยอะ!
+    async function fetchMenu() {
+        try {
+            const { data, error } = await supabase
+                .from('menu')
+                .select('*')
+                .order('menu_id', { ascending: true }); // เรียงตามรหัสเมนู
+
+            if (error) throw error;
+
+            document.getElementById('loading').style.display = 'none';
+            allMenuItems = data; 
+            filterCategory('ทั้งหมด'); 
+
+        } catch (error) {
+            console.error("Error fetching menu:", error);
+            document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ กรุณารีเฟรช";
+        }
     }
 
     function filterCategory(categoryName) {
@@ -221,7 +234,7 @@
         if (categoryName === 'ทั้งหมด') {
             filteredItems = allMenuItems;
         } else {
-            filteredItems = allMenuItems.filter(item => item.Category && item.Category.includes(categoryName));
+            filteredItems = allMenuItems.filter(item => item.category && item.category.includes(categoryName));
         }
 
         renderMenu(filteredItems);
@@ -234,21 +247,19 @@
 
         if (menuItems && menuItems.length > 0) {
             menuItems.forEach(item => {
-                if(item.Status === "เปิดขาย" || item.Status === true || item.Status === "TRUE") {
+                // Supabase เก็บ boolean เป็น true/false
+                if(item.is_active === true) {
                     hasActiveItems = true;
-                    const icon = item.Image_URL ? item.Image_URL : "☕"; 
+                    const icon = item.image_url ? item.image_url : "☕"; 
                     
-                    // หาค่าเริ่มต้นของราคาเพื่อโชว์หน้าการ์ด
-                    let startingPrice = item.Price_Hot || item.Price_Ice || item.Price_Frappe || 0;
-                    
-                    // แปลง object เป็น string เพื่อส่งข้ามฟังก์ชันอย่างปลอดภัย
+                    let startingPrice = item.price_hot || item.price_ice || item.price_frappe || 0;
                     const itemData = encodeURIComponent(JSON.stringify(item));
 
                     html += `
                     <div class="menu-card" onclick="openModal('${itemData}')">
                         <div>
                             <div class="menu-img">${icon}</div>
-                            <div class="menu-name">${item.Name}</div>
+                            <div class="menu-name">${item.name}</div>
                         </div>
                         <div class="menu-price">เริ่มต้น <span>฿${startingPrice}</span></div>
                         <button class="add-btn">+</button>
@@ -264,42 +275,37 @@
         }
     }
 
-    // 🌟 รับข้อมูลเมนูแบบเต็มๆ เข้ามาจัดการใน Modal
     function openModal(itemDataEncoded) {
         const item = JSON.parse(decodeURIComponent(itemDataEncoded));
         currentItem = item;
         qty = 1;
         
-        document.getElementById('m-name').innerText = item.Name;
+        document.getElementById('m-name').innerText = item.name;
         
-        // 🌟 สร้างปุ่ม ร้อน/เย็น/ปั่น อัตโนมัติตามราคาที่ตั้งไว้ใน Sheet
         let serveHtml = "";
         let firstPriceSet = false;
 
-        if (item.Price_Hot) {
-            serveHtml += `<div class="radio-btn ${!firstPriceSet ? 'selected' : ''}" onclick="selectServeType(this, ${item.Price_Hot}, 'ร้อน')">ร้อน <span>฿${item.Price_Hot}</span></div>`;
-            if(!firstPriceSet) { basePrice = item.Price_Hot; selectedServeType = 'ร้อน'; firstPriceSet = true; }
+        if (item.price_hot) {
+            serveHtml += `<div class="radio-btn ${!firstPriceSet ? 'selected' : ''}" onclick="selectServeType(this, ${item.price_hot}, 'ร้อน')">ร้อน <span>฿${item.price_hot}</span></div>`;
+            if(!firstPriceSet) { basePrice = item.price_hot; selectedServeType = 'ร้อน'; firstPriceSet = true; }
         }
-        if (item.Price_Ice) {
-            serveHtml += `<div class="radio-btn ${!firstPriceSet ? 'selected' : ''}" onclick="selectServeType(this, ${item.Price_Ice}, 'เย็น')">เย็น <span>฿${item.Price_Ice}</span></div>`;
-            if(!firstPriceSet) { basePrice = item.Price_Ice; selectedServeType = 'เย็น'; firstPriceSet = true; }
+        if (item.price_ice) {
+            serveHtml += `<div class="radio-btn ${!firstPriceSet ? 'selected' : ''}" onclick="selectServeType(this, ${item.price_ice}, 'เย็น')">เย็น <span>฿${item.price_ice}</span></div>`;
+            if(!firstPriceSet) { basePrice = item.price_ice; selectedServeType = 'เย็น'; firstPriceSet = true; }
         }
-        if (item.Price_Frappe) {
-            serveHtml += `<div class="radio-btn ${!firstPriceSet ? 'selected' : ''}" onclick="selectServeType(this, ${item.Price_Frappe}, 'ปั่น')">ปั่น <span>฿${item.Price_Frappe}</span></div>`;
-            if(!firstPriceSet) { basePrice = item.Price_Frappe; selectedServeType = 'ปั่น'; firstPriceSet = true; }
+        if (item.price_frappe) {
+            serveHtml += `<div class="radio-btn ${!firstPriceSet ? 'selected' : ''}" onclick="selectServeType(this, ${item.price_frappe}, 'ปั่น')">ปั่น <span>฿${item.price_frappe}</span></div>`;
+            if(!firstPriceSet) { basePrice = item.price_frappe; selectedServeType = 'ปั่น'; firstPriceSet = true; }
         }
 
         document.getElementById('serve-options').innerHTML = serveHtml;
         document.getElementById('m-price').innerText = basePrice;
         
-        // ถ้าเมนูนี้ไม่มีตัวเลือกเสิร์ฟเลย (มีแต่ราคาเดียว) ก็ซ่อน Group นี้ไปเลย
         document.getElementById('serve-type-group').style.display = serveHtml === "" ? "none" : "block";
-        
         document.getElementById('m-qty').innerText = qty;
         
-        // Reset ตัวเลือกความหวานและท็อปปิ้ง
         document.getElementById('sweet-options').querySelectorAll('.radio-btn').forEach(btn => btn.classList.remove('selected'));
-        document.getElementById('sweet-options').lastElementChild.classList.add('selected'); // ตั้งกลับเป็น หวานปกติ
+        document.getElementById('sweet-options').lastElementChild.classList.add('selected'); 
         
         document.querySelectorAll('.topping-cb').forEach(cb => cb.checked = false);
         
@@ -307,7 +313,6 @@
         calcTotal();
     }
 
-    // 🌟 ฟังก์ชันจัดการปุ่ม ร้อน/เย็น/ปั่น
     function selectServeType(element, price, type) {
         const container = element.parentElement;
         container.querySelectorAll('.radio-btn').forEach(btn => btn.classList.remove('selected'));
@@ -346,7 +351,7 @@
     }
 
     function addToCart() {
-        alert(`เพิ่ม ${currentItem.Name} (${selectedServeType}) ลงตะกร้าแล้ว!`);
+        alert(`เพิ่ม ${currentItem.name} (${selectedServeType}) ลงตะกร้าแล้ว!`);
         closeModal();
     }
 
