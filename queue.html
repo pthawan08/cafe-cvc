@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVC Cafe - คิวรับเครื่องดื่ม</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --bg: #FBF9F6; --text: #333; --doing: #F39C12; --done: #27AE60; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; }
+        body { background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; color: var(--text); padding: 30px;}
+
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 50px; color: #5C4B41; font-weight: 700; letter-spacing: 1px;}
+        
+        .board { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; flex-grow: 1; overflow: hidden; }
+        .column { background: white; border-radius: 24px; display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0,0,0,0.06); border: 4px solid transparent;}
+        
+        #col-doing { border-color: var(--doing); }
+        #col-done { border-color: var(--done); }
+
+        .col-header { padding: 25px; font-size: 38px; font-weight: 700; text-align: center; color: white; border-radius: 18px 18px 0 0; letter-spacing: 1px;}
+        #col-doing .col-header { background: var(--doing); }
+        #col-done .col-header { background: var(--done); }
+
+        .queue-list { padding: 30px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 20px; }
+        
+        .q-item { font-size: 42px; font-weight: 600; padding: 20px 30px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; background: #F9F9F9; border-left: 10px solid #DDD; box-shadow: 0 4px 15px rgba(0,0,0,0.03); animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);}
+        .q-doing { border-left-color: var(--doing); color: #444;}
+        .q-done { border-left-color: var(--done); color: var(--done); background: #EAFaf1; font-size: 50px; border-width: 2px; border-style: solid;}
+
+        @keyframes popIn { 
+            0% { opacity: 0; transform: scale(0.9) translateY(20px); } 
+            100% { opacity: 1; transform: scale(1) translateY(0); } 
+        }
+        
+        /* ซ่อน Scrollbar ให้ดูเนียนตาเหมือนแอปทีวี */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>☕ สถานะคิว (Queue Status)</h1>
+    </div>
+
+    <div class="board">
+        <div class="column" id="col-doing">
+            <div class="col-header">กำลังเตรียม (Preparing) ⏳</div>
+            <div class="queue-list" id="list-doing"></div>
+        </div>
+
+        <div class="column" id="col-done">
+            <div class="col-header">เชิญรับเครื่องดื่ม (Ready) ✅</div>
+            <div class="queue-list" id="list-done"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://zkjnamlcnffsuqzvkznx.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpram5hbWxjbmZmc3VxenZrem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTk3MjIsImV4cCI6MjEwNTI5NTcyMn0.yUCmqbe5_tjsOBNEfx7qPXkmUiuoL5IX_y-tdjJuITY";
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function fetchQueue() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('orders')
+                    .select('customer_name, order_id, status')
+                    .in('status', ['Doing', 'Done']) // ดึงมาเฉพาะคิวที่กำลังทำ กับเสร็จแล้ว
+                    .order('created_at', { ascending: false })
+                    .limit(30);
+
+                if (error) throw error;
+                renderQueue(data);
+            } catch (error) {
+                console.error("Error fetching queue:", error);
+            }
+        }
+
+        function renderQueue(orders) {
+            const listDoing = document.getElementById('list-doing');
+            const listDone = document.getElementById('list-done');
+
+            listDoing.innerHTML = '';
+            listDone.innerHTML = '';
+
+            const doingOrders = orders.filter(o => o.status === 'Doing');
+            // คิวเสร็จแล้ว โชว์แค่ 5 คิวล่าสุดเพื่อไม่ให้ล้นจอ
+            const doneOrders = orders.filter(o => o.status === 'Done').slice(0, 5); 
+
+            if (doingOrders.length === 0) listDoing.innerHTML = '<div style="text-align:center; color:#CCC; font-size:32px; margin-top:40px;">ยังไม่มีคิวที่กำลังทำ</div>';
+            if (doneOrders.length === 0) listDone.innerHTML = '<div style="text-align:center; color:#CCC; font-size:32px; margin-top:40px;">ยังไม่มีคิวที่รอรับ</div>';
+
+            doingOrders.forEach(order => {
+                // ถ้ามีชื่อไลน์โชว์ชื่อ ถ้าไม่มีโชว์เลข 4 ตัวท้ายของออเดอร์
+                const name = order.customer_name || `คิว ${order.order_id.slice(-4)}`;
+                listDoing.insertAdjacentHTML('beforeend', `
+                    <div class="q-item q-doing">
+                        <span>👤 ${name}</span>
+                    </div>
+                `);
+            });
+
+            doneOrders.forEach(order => {
+                const name = order.customer_name || `คิว ${order.order_id.slice(-4)}`;
+                listDone.insertAdjacentHTML('beforeend', `
+                    <div class="q-item q-done">
+                        <span>🎉 ${name}</span>
+                        <span>รับได้เลย</span>
+                    </div>
+                `);
+            });
+        }
+
+        function setupRealtime() {
+            supabaseClient
+                .channel('public:queue')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+                    fetchQueue(); 
+                })
+                .subscribe();
+        }
+
+        fetchQueue();
+        setupRealtime();
+    </script>
+</body>
+</html>
