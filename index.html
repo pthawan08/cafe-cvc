@@ -93,12 +93,13 @@
         <button>ดูเลย →</button>
     </div>
 
-    <!-- 🌟 เพิ่มระบบปุ่มกดตัวกรองตรงนี้ครับ -->
+    <!-- 🌟 เพิ่มปุ่มหมวดหมู่ "ชาผลไม้" ตรงนี้ครับ -->
     <div class="section-title">หมวดหมู่</div>
     <div class="categories" id="category-tabs">
         <div class="cat-item active" onclick="filterCategory('ทั้งหมด')">ทั้งหมด</div>
         <div class="cat-item" onclick="filterCategory('กาแฟ')">☕ กาแฟ</div>
         <div class="cat-item" onclick="filterCategory('ชา/นม')">🍵 ชา/นม</div>
+        <div class="cat-item" onclick="filterCategory('ชาผลไม้')">🍑 ชาผลไม้</div>
         <div class="cat-item" onclick="filterCategory('สมูทตี้')">🥤 สมูทตี้</div>
         <div class="cat-item" onclick="filterCategory('โซดา')">🍹 โซดา</div>
     </div>
@@ -162,7 +163,7 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbzNuf6uM-uH2gnOMD_b9zxmWNZSOtMjzHX-_z5rJJ3V0Gz9zYlutHHTW5Vfe_WcYrUz/exec";
     const LIFF_ID = "2009434275-8CCxzLOq"; 
 
-    let allMenuItems = []; // 🌟 เก็บข้อมูลเมนูทั้งหมดไว้ในหน่วยความจำ
+    let allMenuItems = []; 
     let currentItem = {};
     let qty = 1;
     let basePrice = 0;
@@ -191,17 +192,15 @@
             .then(res => res.json())
             .then(data => {
                 document.getElementById('loading').style.display = 'none';
-                allMenuItems = data.menu; // 🌟 เก็บข้อมูลที่โหลดมา
-                filterCategory('ทั้งหมด'); // 🌟 เรียกใช้ตัวกรองค่าเริ่มต้น
+                allMenuItems = data.menu; 
+                filterCategory('ทั้งหมด'); 
             })
             .catch(err => {
                 document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ";
             });
     }
 
-    // 🌟 ฟังก์ชันกรองหมวดหมู่ใหม่
     function filterCategory(categoryName) {
-        // 1. เปลี่ยนสีปุ่มที่ถูกกด
         const tabs = document.querySelectorAll('.cat-item');
         tabs.forEach(tab => {
             tab.classList.remove('active');
@@ -210,10 +209,8 @@
             }
         });
 
-        // 2. เปลี่ยนหัวข้อเมนู
         document.getElementById('menu-title').innerText = categoryName === 'ทั้งหมด' ? 'เมนูทั้งหมด' : `หมวดหมู่: ${categoryName}`;
 
-        // 3. กรองข้อมูลจาก Array
         let filteredItems = [];
         if (categoryName === 'ทั้งหมด') {
             filteredItems = allMenuItems;
@@ -221,14 +218,12 @@
             filteredItems = allMenuItems.filter(item => item.Category && item.Category.includes(categoryName));
         }
 
-        // 4. สั่งวาดเมนูใหม่
         renderMenu(filteredItems);
     }
 
     function renderMenu(menuItems) {
         const container = document.getElementById('menu-container');
         let html = "";
-        
         let hasActiveItems = false;
 
         if (menuItems && menuItems.length > 0) {
