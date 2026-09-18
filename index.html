@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CVC Cafe - สั่งเครื่องดื่ม</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <!-- โหลดไลบรารี LINE LIFF และ Supabase -->
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -130,7 +129,6 @@
         <div class="option-group" id="serve-type-group">
             <div class="option-title">ประเภท <span style="color:var(--primary)">*</span></div>
             <div class="radio-grid" id="serve-options">
-                <!-- ปุ่มจะถูกสร้างอัตโนมัติตามราคาที่มีใน Database -->
             </div>
         </div>
 
@@ -166,12 +164,12 @@
 </div>
 
 <script>
-    // 🔴 1. ข้อมูลเชื่อมต่อ Supabase ของคุณ
+    // 🌟 เปลี่ยนชื่อตัวแปรเป็น supabaseClient เพื่อไม่ให้ชนกับระบบ
     const SUPABASE_URL = "https://zkjnamlcnffsuqzvkznx.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpram5hbWxjbmZmc3VxenZrem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTk3MjIsImV4cCI6MjEwNTI5NTcyMn0.yUCmqbe5_tjsOBNEfx7qPXkmUiuoL5IX_y-tdjJuITY";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // 🔴 2. อย่าลืมใส่ LIFF ID ของคุณ
+    // 🔴 2. อย่าลืมใส่ LIFF ID ของคุณเหมือนเดิมนะครับ
     const LIFF_ID = "2009434275-8CCxzLOq"; 
 
     let allMenuItems = []; 
@@ -199,13 +197,13 @@
         }
     }
 
-    // 🚀 ดึงข้อมูลจาก Supabase โดยตรง เร็วกว่าเดิมเยอะ!
     async function fetchMenu() {
         try {
-            const { data, error } = await supabase
+            // 🌟 ใช้ supabaseClient แทน supabase
+            const { data, error } = await supabaseClient
                 .from('menu')
                 .select('*')
-                .order('menu_id', { ascending: true }); // เรียงตามรหัสเมนู
+                .order('menu_id', { ascending: true }); 
 
             if (error) throw error;
 
@@ -247,7 +245,6 @@
 
         if (menuItems && menuItems.length > 0) {
             menuItems.forEach(item => {
-                // Supabase เก็บ boolean เป็น true/false
                 if(item.is_active === true) {
                     hasActiveItems = true;
                     const icon = item.image_url ? item.image_url : "☕"; 
