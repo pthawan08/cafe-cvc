@@ -7,76 +7,73 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        :root { --primary: #2E7D32; --bg: #FFFCF7; --text: #333; --light: #f5f5f5; }
+        :root { --primary: #A07855; --bg: #FBF9F6; --text: #4A4A4A; --light: #F2EFE9; --accent: #D5BDAF; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; }
-        body { background-color: #e0e0e0; display: flex; justify-content: center; }
+        body { background-color: #E8E4DD; display: flex; justify-content: center; color: var(--text); }
         
-        /* จำลองหน้าจอมือถือ */
-        #app { width: 100%; max-width: 480px; background-color: var(--bg); min-height: 100vh; position: relative; padding-bottom: 80px; box-shadow: 0 0 20px rgba(0,0,0,0.1); overflow-x: hidden;}
+        #app { width: 100%; max-width: 480px; background-color: var(--bg); min-height: 100vh; position: relative; padding-bottom: 80px; box-shadow: 0 0 20px rgba(0,0,0,0.05); overflow-x: hidden;}
         
-        /* Header */
-        .header { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .user-greeting { font-size: 18px; font-weight: 600; color: var(--text); }
-        .user-greeting span { font-size: 14px; font-weight: 400; color: #888; display: block; }
-        .avatar { width: 45px; height: 45px; background: #ddd; border-radius: 50%; overflow: hidden; }
+        .header { padding: 25px 20px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .user-greeting { font-size: 18px; font-weight: 500; }
+        .user-greeting span { font-size: 14px; font-weight: 300; color: #888; display: block; }
+        .avatar { width: 48px; height: 48px; background: #ddd; border-radius: 50%; overflow: hidden; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* Search & Banner */
-        .search-bar { margin: 0 20px 20px; padding: 12px 20px; background: white; border-radius: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); color: #888; display: flex; align-items: center; }
-        .banner { margin: 0 20px 20px; height: 130px; background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%); border-radius: 16px; padding: 20px; color: #333; position: relative; }
-        .banner h2 { font-size: 20px; margin-bottom: 5px; }
-        .banner button { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 12px; margin-top: 10px; cursor: pointer; }
+        .search-bar { margin: 0 20px 20px; padding: 12px 20px; background: white; border-radius: 25px; box-shadow: 0 2px 10px rgba(160, 120, 85, 0.08); color: #999; display: flex; align-items: center; font-weight: 300; border: 1px solid #F0EAE1;}
+        
+        .banner { margin: 0 20px 20px; height: 130px; background: linear-gradient(135deg, #E6DACA 0%, #D5BDAF 100%); border-radius: 16px; padding: 25px 20px; color: #5C4B41; position: relative; box-shadow: 0 4px 12px rgba(213, 189, 175, 0.3); }
+        .banner h2 { font-size: 20px; margin-bottom: 8px; font-weight: 600; line-height: 1.2; }
+        .banner button { background: var(--primary); color: white; border: none; padding: 8px 18px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: 500; box-shadow: 0 2px 6px rgba(160, 120, 85, 0.4); }
 
-        /* Categories */
-        .section-title { margin: 0 20px 10px; font-size: 18px; font-weight: 600; }
-        .categories { display: flex; gap: 15px; padding: 0 20px 20px; overflow-x: auto; }
-        .cat-item { min-width: 70px; background: white; border-radius: 16px; padding: 15px 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); font-size: 14px; cursor: pointer; }
-        .cat-item.active { border: 2px solid var(--primary); color: var(--primary); font-weight: 600; }
+        .section-title { margin: 0 20px 12px; font-size: 18px; font-weight: 600; color: #333; }
+        .categories { display: flex; gap: 12px; padding: 0 20px 20px; overflow-x: auto; }
+        .categories::-webkit-scrollbar { display: none; }
+        .cat-item { min-width: 75px; background: white; border-radius: 12px; padding: 12px 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03); font-size: 14px; cursor: pointer; border: 1px solid #F0EAE1; color: #666; transition: 0.2s;}
+        .cat-item.active { background: var(--primary); color: white; border-color: var(--primary); font-weight: 500; box-shadow: 0 4px 10px rgba(160, 120, 85, 0.2); }
 
-        /* Menu Grid */
         .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 0 20px 20px; }
-        .menu-card { background: white; border-radius: 16px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; cursor: pointer;}
-        .menu-img { width: 100%; height: 100px; background: #f0f0f0; border-radius: 12px; margin-bottom: 10px; }
-        .menu-name { font-size: 15px; font-weight: 500; margin-bottom: 5px; line-height: 1.3;}
+        .menu-card { background: white; border-radius: 16px; padding: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); position: relative; cursor: pointer; border: 1px solid #F5F2EC; transition: transform 0.2s; }
+        .menu-card:active { transform: scale(0.97); }
+        .menu-img { width: 100%; height: 110px; background: var(--light); border-radius: 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+        .menu-name { font-size: 15px; font-weight: 500; margin-bottom: 4px; line-height: 1.3; color: #333; }
         .menu-price { font-size: 16px; font-weight: 600; color: var(--primary); }
-        .add-btn { position: absolute; bottom: 15px; right: 15px; width: 30px; height: 30px; background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: bold; border: none; }
+        .add-btn { position: absolute; bottom: 12px; right: 12px; width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: 300; border: none; box-shadow: 0 2px 6px rgba(160, 120, 85, 0.3); }
 
-        /* Bottom Nav */
-        .bottom-nav { position: absolute; bottom: 0; width: 100%; background: white; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 10px 0; padding-bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 50; }
-        .nav-item { text-align: center; color: #888; font-size: 12px; cursor: pointer;}
-        .nav-item.active { color: var(--primary); }
-        .nav-icon { font-size: 24px; margin-bottom: 2px; }
+        .bottom-nav { position: absolute; bottom: 0; width: 100%; background: white; border-top: 1px solid #F0EAE1; display: flex; justify-content: space-around; padding: 12px 0; padding-bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 50; box-shadow: 0 -2px 15px rgba(0,0,0,0.03); }
+        .nav-item { text-align: center; color: #A0A0A0; font-size: 12px; cursor: pointer; font-weight: 400; transition: 0.2s;}
+        .nav-item.active { color: var(--primary); font-weight: 500; }
+        .nav-icon { font-size: 22px; margin-bottom: 4px; }
 
-        /* ป๊อปอัปสั่งอาหาร (Modal แบบ Slide up) */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; display: none; justify-content: center; align-items: flex-end; }
-        .modal-content { width: 100%; max-width: 480px; background: white; border-radius: 25px 25px 0 0; padding: 25px 20px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease-out; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; display: none; justify-content: center; align-items: flex-end; backdrop-filter: blur(2px); }
+        .modal-content { width: 100%; max-width: 480px; background: white; border-radius: 28px 28px 0 0; padding: 25px 24px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 -5px 20px rgba(0,0,0,0.1); }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         
-        .modal-header { font-size: 22px; font-weight: 600; margin-bottom: 5px; }
-        .modal-price { font-size: 20px; font-weight: bold; color: var(--primary); margin-bottom: 20px; }
+        .modal-header { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: #333; }
+        .modal-price { font-size: 20px; font-weight: 600; color: var(--primary); margin-bottom: 24px; }
         
-        .option-group { margin-bottom: 20px; }
-        .option-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; display: flex; justify-content: space-between;}
+        .option-group { margin-bottom: 24px; }
+        .option-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; color: #444;}
         
         .radio-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-        .radio-btn { border: 1px solid #ddd; border-radius: 20px; padding: 8px; text-align: center; font-size: 14px; cursor: pointer; color: #555; }
-        .radio-btn.selected { background: #e8f5e9; border-color: var(--primary); color: var(--primary); font-weight: 600; }
+        .radio-btn { border: 1px solid #E5E5E5; border-radius: 12px; padding: 10px 5px; text-align: center; font-size: 14px; cursor: pointer; color: #666; transition: 0.2s; background: white;}
+        .radio-btn.selected { background: var(--bg); border-color: var(--primary); color: var(--primary); font-weight: 500; box-shadow: 0 2px 6px rgba(160, 120, 85, 0.1); }
         
-        .checkbox-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-size: 15px;}
-        .checkbox-row input { transform: scale(1.3); margin-right: 10px; accent-color: var(--primary); }
+        .checkbox-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #F5F2EC; font-size: 15px; color: #555;}
+        .checkbox-row input { transform: scale(1.3); margin-right: 12px; accent-color: var(--primary); }
         
-        .qty-control { display: flex; justify-content: center; align-items: center; gap: 20px; margin: 30px 0; }
-        .qty-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #ddd; background: white; font-size: 20px; display: flex; justify-content: center; align-items: center; cursor: pointer;}
+        .qty-control { display: flex; justify-content: center; align-items: center; gap: 24px; margin: 30px 0; }
+        .qty-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid #E5E5E5; background: white; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #555; transition: 0.2s;}
+        .qty-btn:active { background: var(--light); }
         
-        .add-cart-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 15px; border-radius: 25px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .add-cart-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; font-size: 16px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 12px rgba(160, 120, 85, 0.3); transition: 0.2s;}
+        .add-cart-btn:active { transform: translateY(2px); box-shadow: 0 2px 6px rgba(160, 120, 85, 0.3); }
         
-        #loading { text-align: center; padding: 50px 20px; color: var(--primary); }
+        #loading { text-align: center; padding: 50px 20px; color: #888; font-weight: 300; }
     </style>
 </head>
 <body>
 
 <div id="app">
-    <!-- Header -->
     <div class="header">
         <div class="user-greeting">
             <span>สวัสดี 👋</span>
@@ -87,18 +84,13 @@
         </div>
     </div>
 
-    <!-- Search -->
-    <div class="search-bar">
-        🔍 ค้นหาเมนูเครื่องดื่ม...
-    </div>
+    <div class="search-bar">🔍 ค้นหาเมนูเครื่องดื่ม...</div>
 
-    <!-- Hero Banner -->
     <div class="banner">
         <h2>สดชื่นทุกวัน<br>กับเมนูโปรด</h2>
         <button>ดูเลย →</button>
     </div>
 
-    <!-- Categories -->
     <div class="section-title">หมวดหมู่</div>
     <div class="categories">
         <div class="cat-item active">☕ กาแฟ</div>
@@ -107,14 +99,10 @@
         <div class="cat-item">🍹 โซดา</div>
     </div>
 
-    <!-- Menu List -->
     <div class="section-title">เมนูแนะนำ</div>
     <div id="loading">กำลังโหลดเมนูจากระบบ... ⏳</div>
-    <div class="menu-grid" id="menu-container">
-        <!-- เมนูจะถูกแทรกที่นี่ด้วย JS -->
-    </div>
+    <div class="menu-grid" id="menu-container"></div>
 
-    <!-- Bottom Navigation -->
     <div class="bottom-nav">
         <div class="nav-item active"><div class="nav-icon">🏠</div>หน้าแรก</div>
         <div class="nav-item"><div class="nav-icon">🔍</div>ค้นหา</div>
@@ -123,26 +111,29 @@
     </div>
 </div>
 
-<!-- Modal เลือกสินค้า (จำลองจากรูป UI ที่ส่งมา) -->
 <div class="modal-overlay" id="product-modal">
     <div class="modal-content">
-        <div style="text-align: right; margin-bottom: -20px;">
-            <button onclick="closeModal()" style="border:none; background:none; font-size:20px; color:#888; cursor:pointer;">✖</button>
+        <div style="text-align: right; margin-bottom: -15px;">
+            <button onclick="closeModal()" style="border:none; background:none; font-size:24px; color:#AAA; cursor:pointer;">✖</button>
         </div>
-        <div class="modal-header" id="m-name">อเมริกาโน่เย็น</div>
-        <div class="modal-price">฿<span id="m-price">40</span></div>
+        <div class="modal-header" id="m-name">ชื่อเมนู</div>
+        <div class="modal-price">฿<span id="m-price">0</span></div>
         
         <div class="option-group">
-            <div class="option-title">ความหวาน <span>*</span></div>
+            <div class="option-title">ความหวาน <span style="color:var(--primary)">*</span></div>
             <div class="radio-grid" id="sweet-options">
                 <div class="radio-btn" onclick="selectRadio(this, 'sweet')">ไม่หวาน (0%)</div>
                 <div class="radio-btn" onclick="selectRadio(this, 'sweet')">หวานน้อย (50%)</div>
-                <div class="radio-btn selected" onclick="selectRadio(this, 'sweet')">หวานปกติ (100%)</div>
+                <div class="radio-btn selected" onclick="selectRadio(this, 'sweet')">ปกติ (100%)</div>
             </div>
         </div>
 
         <div class="option-group">
             <div class="option-title">ท็อปปิ้ง (เพิ่ม)</div>
+            <label class="checkbox-row">
+                <div><input type="checkbox" value="5" class="topping-cb" onchange="calcTotal()"> ปั่น</div>
+                <div style="color:#888;">+5.-</div>
+            </label>
             <label class="checkbox-row">
                 <div><input type="checkbox" value="15" class="topping-cb" onchange="calcTotal()"> เพิ่มช็อตกาแฟ</div>
                 <div style="color:#888;">+15.-</div>
@@ -155,25 +146,25 @@
         
         <div class="qty-control">
             <button class="qty-btn" onclick="changeQty(-1)">-</button>
-            <span style="font-size: 20px; font-weight: 600;" id="m-qty">1</span>
+            <span style="font-size: 20px; font-weight: 500; width: 30px; text-align: center;" id="m-qty">1</span>
             <button class="qty-btn" onclick="changeQty(1)">+</button>
         </div>
         
-        <button class="add-cart-btn" onclick="addToCart()">เพิ่มลงตะกร้า - ฿<span id="m-total">40</span></button>
+        <button class="add-cart-btn" onclick="addToCart()">เพิ่มลงตะกร้า - ฿<span id="m-total">0</span></button>
     </div>
 </div>
 
 <script>
-    // 🔴 1. ใส่ Web App URL อันใหม่ล่าสุดของคุณตรงนี้
+    // 🔴 1. API URL ของคุณ (ใส่ให้แล้ว)
     const API_URL = "https://script.google.com/macros/s/AKfycbzNuf6uM-uH2gnOMD_b9zxmWNZSOtMjzHX-_z5rJJ3V0Gz9zYlutHHTW5Vfe_WcYrUz/exec";
-    // 🔴 2. ใส่ LIFF ID ของคุณ
+    
+    // 🔴 2. อย่าลืมใส่ LIFF ID ตรงนี้นะครับ
     const LIFF_ID = "2009434275-8CCxzLOq"; 
 
     let currentItem = {};
     let qty = 1;
     let basePrice = 0;
 
-    // --- ส่วนของ LINE LIFF ---
     async function initializeLiff() {
         try {
             if (LIFF_ID !== "ใส่_LIFF_ID_ของคุณที่นี่") {
@@ -193,7 +184,6 @@
         }
     }
 
-    // --- ส่วนดึงข้อมูลจาก API ---
     function fetchMenu() {
         fetch(API_URL + "?action=getCustomerData")
             .then(res => res.json())
@@ -202,8 +192,7 @@
                 renderMenu(data.menu);
             })
             .catch(err => {
-                document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ กรุณารีเฟรช";
-                console.error(err);
+                document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ";
             });
     }
 
@@ -211,29 +200,27 @@
         const container = document.getElementById('menu-container');
         let html = "";
         
-        // ถ้าไม่มีข้อมูล ให้สร้างข้อมูลจำลองเพื่อให้เห็น UI
         if(!menuItems || menuItems.length === 0) {
-            menuItems = [
-                { Name: "อเมริกาโน่เย็น", Price_Base: 40, Image_URL: "" },
-                { Name: "ลาเต้เย็น", Price_Base: 45, Image_URL: "" },
-                { Name: "ชาเขียวมัทฉะเย็น", Price_Base: 45, Image_URL: "" },
-                { Name: "ชานมเย็น", Price_Base: 35, Image_URL: "" }
-            ];
+            container.innerHTML = "<div style='grid-column: 1/-1; text-align: center; color: #888;'>ยังไม่มีเมนูเปิดขายในขณะนี้</div>";
+            return;
         }
 
         menuItems.forEach(item => {
-            html += `
-            <div class="menu-card" onclick="openModal('${item.Name}', ${item.Price_Base})">
-                <div class="menu-img"></div>
-                <div class="menu-name">${item.Name}</div>
-                <div class="menu-price">฿${item.Price_Base}</div>
-                <button class="add-btn">+</button>
-            </div>`;
+            // ถ้าคอลัมน์ F (Status) ใน Sheet เป็นคำว่า เปิดขาย หรือ TRUE
+            if(item.Status === "เปิดขาย" || item.Status === true || item.Status === "TRUE") {
+                const icon = item.Image_URL ? item.Image_URL : "☕"; 
+                html += `
+                <div class="menu-card" onclick="openModal('${item.Name}', ${item.Price_Base})">
+                    <div class="menu-img">${icon}</div>
+                    <div class="menu-name">${item.Name}</div>
+                    <div class="menu-price">฿${item.Price_Base}</div>
+                    <button class="add-btn">+</button>
+                </div>`;
+            }
         });
         container.innerHTML = html;
     }
 
-    // --- ส่วนควบคุม Modal (UI แบบในรูป) ---
     function openModal(name, price) {
         currentItem.name = name;
         basePrice = price;
@@ -243,7 +230,6 @@
         document.getElementById('m-price').innerText = price;
         document.getElementById('m-qty').innerText = qty;
         
-        // Reset options
         document.querySelectorAll('.topping-cb').forEach(cb => cb.checked = false);
         document.getElementById('product-modal').style.display = 'flex';
         calcTotal();
@@ -271,20 +257,17 @@
         document.querySelectorAll('.topping-cb:checked').forEach(cb => {
             toppingPrice += parseInt(cb.value);
         });
-        
         const total = (basePrice + toppingPrice) * qty;
         document.getElementById('m-total').innerText = total;
     }
 
     function addToCart() {
-        alert(`เพิ่ม ${currentItem.name} ลงตะกร้าแล้ว! (ระบบตะกร้าเดี๋ยวเราทำในขั้นตอนต่อไปครับ)`);
+        alert(`เพิ่ม ${currentItem.name} ลงตะกร้าแล้ว!`);
         closeModal();
     }
 
-    // เริ่มทำงานเมื่อเปิดเว็บ
     initializeLiff();
     fetchMenu();
-
 </script>
 </body>
 </html>
