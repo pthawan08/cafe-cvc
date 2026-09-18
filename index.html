@@ -26,9 +26,11 @@
         .banner button { background: var(--primary); color: white; border: none; padding: 8px 18px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: 500; box-shadow: 0 2px 6px rgba(160, 120, 85, 0.4); }
 
         .section-title { margin: 0 20px 12px; font-size: 18px; font-weight: 600; color: #333; }
-        .categories { display: flex; gap: 12px; padding: 0 20px 20px; overflow-x: auto; }
+        
+        /* Categories Scroll */
+        .categories { display: flex; gap: 12px; padding: 0 20px 20px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
         .categories::-webkit-scrollbar { display: none; }
-        .cat-item { min-width: 75px; background: white; border-radius: 12px; padding: 12px 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03); font-size: 14px; cursor: pointer; border: 1px solid #F0EAE1; color: #666; transition: 0.2s;}
+        .cat-item { display: inline-block; padding: 10px 16px; background: white; border-radius: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03); font-size: 14px; cursor: pointer; border: 1px solid #F0EAE1; color: #666; transition: 0.2s;}
         .cat-item.active { background: var(--primary); color: white; border-color: var(--primary); font-weight: 500; box-shadow: 0 4px 10px rgba(160, 120, 85, 0.2); }
 
         .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 0 20px 20px; }
@@ -91,15 +93,17 @@
         <button>ดูเลย →</button>
     </div>
 
+    <!-- 🌟 เพิ่มระบบปุ่มกดตัวกรองตรงนี้ครับ -->
     <div class="section-title">หมวดหมู่</div>
-    <div class="categories">
-        <div class="cat-item active">☕ กาแฟ</div>
-        <div class="cat-item">🍵 ชา</div>
-        <div class="cat-item">🥛 นม</div>
-        <div class="cat-item">🍹 โซดา</div>
+    <div class="categories" id="category-tabs">
+        <div class="cat-item active" onclick="filterCategory('ทั้งหมด')">ทั้งหมด</div>
+        <div class="cat-item" onclick="filterCategory('กาแฟ')">☕ กาแฟ</div>
+        <div class="cat-item" onclick="filterCategory('ชา/นม')">🍵 ชา/นม</div>
+        <div class="cat-item" onclick="filterCategory('สมูทตี้')">🥤 สมูทตี้</div>
+        <div class="cat-item" onclick="filterCategory('โซดา')">🍹 โซดา</div>
     </div>
 
-    <div class="section-title">เมนูแนะนำ</div>
+    <div class="section-title" id="menu-title">เมนูแนะนำ</div>
     <div id="loading">กำลังโหลดเมนูจากระบบ... ⏳</div>
     <div class="menu-grid" id="menu-container"></div>
 
@@ -155,12 +159,10 @@
 </div>
 
 <script>
-    // 🔴 1. API URL ของคุณ (ใส่ให้แล้ว)
     const API_URL = "https://script.google.com/macros/s/AKfycbzNuf6uM-uH2gnOMD_b9zxmWNZSOtMjzHX-_z5rJJ3V0Gz9zYlutHHTW5Vfe_WcYrUz/exec";
-    
-    // 🔴 2. อย่าลืมใส่ LIFF ID ตรงนี้นะครับ
     const LIFF_ID = "2009434275-8CCxzLOq"; 
 
+    let allMenuItems = []; // 🌟 เก็บข้อมูลเมนูทั้งหมดไว้ในหน่วยความจำ
     let currentItem = {};
     let qty = 1;
     let basePrice = 0;
@@ -189,36 +191,67 @@
             .then(res => res.json())
             .then(data => {
                 document.getElementById('loading').style.display = 'none';
-                renderMenu(data.menu);
+                allMenuItems = data.menu; // 🌟 เก็บข้อมูลที่โหลดมา
+                filterCategory('ทั้งหมด'); // 🌟 เรียกใช้ตัวกรองค่าเริ่มต้น
             })
             .catch(err => {
                 document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ";
             });
     }
 
+    // 🌟 ฟังก์ชันกรองหมวดหมู่ใหม่
+    function filterCategory(categoryName) {
+        // 1. เปลี่ยนสีปุ่มที่ถูกกด
+        const tabs = document.querySelectorAll('.cat-item');
+        tabs.forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.innerText.includes(categoryName) || (categoryName === 'ทั้งหมด' && tab.innerText === 'ทั้งหมด')) {
+                tab.classList.add('active');
+            }
+        });
+
+        // 2. เปลี่ยนหัวข้อเมนู
+        document.getElementById('menu-title').innerText = categoryName === 'ทั้งหมด' ? 'เมนูทั้งหมด' : `หมวดหมู่: ${categoryName}`;
+
+        // 3. กรองข้อมูลจาก Array
+        let filteredItems = [];
+        if (categoryName === 'ทั้งหมด') {
+            filteredItems = allMenuItems;
+        } else {
+            filteredItems = allMenuItems.filter(item => item.Category && item.Category.includes(categoryName));
+        }
+
+        // 4. สั่งวาดเมนูใหม่
+        renderMenu(filteredItems);
+    }
+
     function renderMenu(menuItems) {
         const container = document.getElementById('menu-container');
         let html = "";
         
-        if(!menuItems || menuItems.length === 0) {
-            container.innerHTML = "<div style='grid-column: 1/-1; text-align: center; color: #888;'>ยังไม่มีเมนูเปิดขายในขณะนี้</div>";
-            return;
+        let hasActiveItems = false;
+
+        if (menuItems && menuItems.length > 0) {
+            menuItems.forEach(item => {
+                if(item.Status === "เปิดขาย" || item.Status === true || item.Status === "TRUE") {
+                    hasActiveItems = true;
+                    const icon = item.Image_URL ? item.Image_URL : "☕"; 
+                    html += `
+                    <div class="menu-card" onclick="openModal('${item.Name}', ${item.Price_Base})">
+                        <div class="menu-img">${icon}</div>
+                        <div class="menu-name">${item.Name}</div>
+                        <div class="menu-price">฿${item.Price_Base}</div>
+                        <button class="add-btn">+</button>
+                    </div>`;
+                }
+            });
         }
 
-        menuItems.forEach(item => {
-            // ถ้าคอลัมน์ F (Status) ใน Sheet เป็นคำว่า เปิดขาย หรือ TRUE
-            if(item.Status === "เปิดขาย" || item.Status === true || item.Status === "TRUE") {
-                const icon = item.Image_URL ? item.Image_URL : "☕"; 
-                html += `
-                <div class="menu-card" onclick="openModal('${item.Name}', ${item.Price_Base})">
-                    <div class="menu-img">${icon}</div>
-                    <div class="menu-name">${item.Name}</div>
-                    <div class="menu-price">฿${item.Price_Base}</div>
-                    <button class="add-btn">+</button>
-                </div>`;
-            }
-        });
-        container.innerHTML = html;
+        if (!hasActiveItems) {
+            container.innerHTML = "<div style='grid-column: 1/-1; text-align: center; color: #888; margin-top: 20px;'>ไม่มีเมนูในหมวดหมู่นี้</div>";
+        } else {
+            container.innerHTML = html;
+        }
     }
 
     function openModal(name, price) {
