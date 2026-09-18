@@ -36,6 +36,7 @@
         .btn-doing { background: var(--doing); }
         .btn-done { background: var(--done); }
         .action-btn:active { transform: scale(0.98); }
+        .action-btn:disabled { opacity: 0.7; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -46,19 +47,16 @@
     </div>
 
     <div class="board">
-        <!-- คอลัมน์ออเดอร์ใหม่ -->
         <div class="column" id="col-new">
             <div class="col-header">🔴 ออเดอร์ใหม่ (New)</div>
             <div class="order-list" id="list-new"></div>
         </div>
 
-        <!-- คอลัมน์กำลังทำ -->
         <div class="column" id="col-doing">
             <div class="col-header">🟡 กำลังทำ (Doing)</div>
             <div class="order-list" id="list-doing"></div>
         </div>
 
-        <!-- คอลัมน์เสร็จแล้ว -->
         <div class="column" id="col-done">
             <div class="col-header">🟢 เสร็จแล้ว (Done)</div>
             <div class="order-list" id="list-done"></div>
@@ -70,10 +68,8 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpram5hbWxjbmZmc3VxenZrem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTk3MjIsImV4cCI6MjEwNTI5NTcyMn0.yUCmqbe5_tjsOBNEfx7qPXkmUiuoL5IX_y-tdjJuITY";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // ฟังก์ชันดึงออเดอร์ของวันนี้
         async function fetchOrders() {
             try {
-                // ดึงออเดอร์ 50 รายการล่าสุด
                 const { data, error } = await supabaseClient
                     .from('orders')
                     .select('*')
@@ -88,7 +84,6 @@
             }
         }
 
-        // ฟังก์ชันแจกแจงออเดอร์ลงช่องต่างๆ
         function renderOrders(orders) {
             const listNew = document.getElementById('list-new');
             const listDoing = document.getElementById('list-doing');
@@ -99,10 +94,7 @@
             listDone.innerHTML = '';
 
             orders.forEach(order => {
-                // แปลงเวลาให้ดูง่าย
                 const timeStr = new Date(order.created_at).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
-                
-                // แยกรายละเอียดเมนูด้วย |
                 const itemsHtml = order.order_details.split(' | ').map(item => `<div>• ${item}</div>`).join('');
 
                 let cardHtml = `
@@ -115,12 +107,11 @@
                         <div class="order-items">${itemsHtml}</div>
                 `;
 
-                // ใส่ปุ่มตามสถานะ
                 if (order.status === 'New') {
-                    cardHtml += `<button class="action-btn btn-doing" onclick="updateStatus('${order.order_id}', 'Doing')">รับออเดอร์ -> กำลังทำ</button></div>`;
+                    cardHtml += `<button class="action-btn btn-doing" onclick="updateStatus(event, '${order.order_id}', 'Doing')">รับออเดอร์ -> กำลังทำ</button></div>`;
                     listNew.insertAdjacentHTML('beforeend', cardHtml);
                 } else if (order.status === 'Doing') {
-                    cardHtml += `<button class="action-btn btn-done" onclick="updateStatus('${order.order_id}', 'Done')">ออเดอร์เสร็จแล้ว ✔️</button></div>`;
+                    cardHtml += `<button class="action-btn btn-done" onclick="updateStatus(event, '${order.order_id}', 'Done')">ออเดอร์เสร็จแล้ว ✔️</button></div>`;
                     listDoing.insertAdjacentHTML('beforeend', cardHtml);
                 } else if (order.status === 'Done') {
                     cardHtml += `</div>`;
@@ -129,23 +120,31 @@
             });
         }
 
-        // ฟังก์ชันเปลี่ยนสถานะใน Supabase
-        async function updateStatus(orderId, newStatus) {
+        async function updateStatus(event, orderId, newStatus) {
+            const btn = event.target;
+            const originalText = btn.innerText;
+            
             try {
+                btn.innerText = "กำลังอัปเดต... ⏳";
+                btn.disabled = true;
+
                 const { error } = await supabaseClient
                     .from('orders')
                     .update({ status: newStatus })
                     .eq('order_id', orderId);
 
                 if (error) throw error;
-                // ถ้าอัปเดตสำเร็จ ระบบ Real-time จะสั่งโหลดหน้าจอใหม่เอง
+                
+                fetchOrders();
+                
             } catch (error) {
                 alert('เกิดข้อผิดพลาดในการเปลี่ยนสถานะ');
                 console.error(error);
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         }
 
-        // ตั้งค่าให้ระบบรอรับข้อมูล Real-time
         function setupRealtime() {
             const statusBadge = document.getElementById('connection-status');
             
@@ -153,7 +152,7 @@
                 .channel('public:orders')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
                     console.log('ข้อมูลอัปเดต!', payload);
-                    fetchOrders(); // สั่งดึงข้อมูลใหม่ทันทีที่มีการขยับ
+                    fetchOrders(); 
                 })
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
