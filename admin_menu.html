@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVC Cafe - จัดการเมนูหลังร้าน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #A07855; --bg: #FBF9F6; --text: #4A4A4A; --active: #27AE60; --inactive: #E74C3C; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; }
+        body { background-color: #E8E4DD; display: flex; flex-direction: column; min-height: 100vh; color: var(--text); padding: 30px; align-items: center;}
+        
+        .container { width: 100%; max-width: 800px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; background: white; padding: 20px 30px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .header h1 { font-size: 24px; color: var(--primary); }
+        
+        .menu-table { background: white; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
+        .menu-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; border-bottom: 1px solid #F0EAE1; }
+        .menu-row:last-child { border-bottom: none; }
+        
+        .menu-info { display: flex; align-items: center; gap: 15px; }
+        .menu-icon { font-size: 30px; width: 45px; height: 45px; background: var(--bg); display: flex; justify-content: center; align-items: center; border-radius: 12px; }
+        .menu-name { font-size: 16px; font-weight: 600; color: #333; }
+        .menu-cat { font-size: 13px; color: #888; }
+        
+        .menu-actions { display: flex; align-items: center; gap: 15px; }
+        
+        /* สวิตช์เปิด-ปิด */
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: cursor; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--active); }
+        input:checked + .slider:before { transform: translateX(24px); }
+        
+        .status-text { font-size: 13px; font-weight: 500; width: 60px; text-align: center; }
+        
+        #loading { text-align: center; padding: 50px; font-size: 18px; color: #888; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>☕ จัดการเมนู & สถานะสินค้า</h1>
+            <a href="admin.html" style="color: var(--primary); text-decoration: none; font-weight: 500;">← กลับไปหน้าจัดการออเดอร์</a>
+        </div>
+
+        <div id="loading">กำลังโหลดรายการเมนู... ⏳</div>
+
+        <div class="menu-table" id="menu-list" style="display: none;">
+            <!-- รายการเมนูจะถูกดึงมาโชว์ตรงนี้ -->
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://zkjnamlcnffsuqzvkznx.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpram5hbWxjbmZmc3VxenZrem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTk3MjIsImV4cCI6MjEwNTI5NTcyMn0.yUCmqbe5_tjsOBNEfx7qPXkmUiuoL5IX_y-tdjJuITY";
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function fetchAdminMenu() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('menu')
+                    .select('*')
+                    .order('menu_id', { ascending: true });
+
+                if (error) throw error;
+                renderMenuTable(data);
+
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ";
+            }
+        }
+
+        function renderMenuTable(menus) {
+            const container = document.getElementById('menu-list');
+            let html = '';
+
+            menus.forEach(menu => {
+                const icon = menu.image_url || '☕';
+                const isActive = menu.is_active;
+
+                html += `
+                    <div class="menu-row">
+                        <div class="menu-info">
+                            <div class="menu-icon">${icon}</div>
+                            <div>
+                                <div class="menu-name">${menu.name} (${menu.menu_id})</div>
+                                <div class="menu-cat">หมวด: ${menu.category} | เริ่มต้น ฿${menu.price_hot || menu.price_ice || menu.price_frappe || 0}</div>
+                            </div>
+                        </div>
+                        <div class="menu-actions">
+                            <span class="status-text" id="status-label-${menu.menu_id}" style="color: ${isActive ? 'var(--active)' : 'var(--inactive)'};">
+                                ${isActive ? 'เปิดขาย' : 'ปิดหมด'}
+                            </span>
+                            <label class="switch">
+                                <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleMenuStatus('${menu.menu_id}', this)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            document.getElementById('loading').style.display = 'none';
+            container.style.display = 'block';
+        }
+
+        // ฟังก์ชันกดเปิด-ปิดสถานะเมนู
+        async function toggleMenuStatus(menuId, checkbox) {
+            const newState = checkbox.checked;
+            const label = document.getElementById(`status-label-${menuId}`);
+            
+            label.innerText = "กำลังบันทึก...";
+
+            try {
+                const { error } = await supabaseClient
+                    .from('menu')
+                    .update({ is_active: newState })
+                    .eq('menu_id', menuId);
+
+                if (error) throw error;
+
+                label.innerText = newState ? 'เปิดขาย' : 'ปิดหมด';
+                label.style.color = newState ? 'var(--active)' : 'var(--inactive)';
+
+            } catch (error) {
+                console.error(error);
+                alert("เกิดข้อผิดพลาดในการอัปเดตสถานะ");
+                checkbox.checked = !newState; // ตีกลับถ้าพัง
+                label.innerText = !newState ? 'เปิดขาย' : 'ปิดหมด';
+            }
+        }
+
+        fetchAdminMenu();
+    </script>
+</body>
+</html>
