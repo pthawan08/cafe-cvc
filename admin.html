@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVC Cafe - บาริสต้า Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #A07855; --bg: #FBF9F6; --text: #4A4A4A; --new: #E74C3C; --doing: #F39C12; --done: #27AE60; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; }
+        body { background-color: #E8E4DD; display: flex; flex-direction: column; height: 100vh; color: var(--text); padding: 20px;}
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .header h1 { font-size: 24px; color: var(--primary); }
+        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 500; color: white; background: var(--done);}
+        
+        .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; flex-grow: 1; overflow: hidden; }
+        .column { background: white; border-radius: 16px; display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .col-header { padding: 15px; font-size: 18px; font-weight: 600; text-align: center; border-bottom: 2px solid #F0EAE1; color: white; border-radius: 16px 16px 0 0;}
+        
+        #col-new .col-header { background: var(--new); }
+        #col-doing .col-header { background: var(--doing); }
+        #col-done .col-header { background: var(--done); }
+        
+        .order-list { padding: 15px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 15px; }
+        .order-list::-webkit-scrollbar { width: 6px; }
+        .order-list::-webkit-scrollbar-thumb { background: #CCC; border-radius: 10px; }
+        
+        .order-card { background: var(--bg); border: 1px solid #EAEAEA; border-radius: 12px; padding: 15px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.02);}
+        .order-id { font-size: 12px; color: #888; margin-bottom: 5px; }
+        .order-name { font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #333; }
+        .order-items { font-size: 15px; line-height: 1.5; color: #555; background: white; padding: 10px; border-radius: 8px; border: 1px dashed #CCC;}
+        
+        .action-btn { display: block; width: 100%; margin-top: 15px; padding: 10px; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; color: white; transition: 0.2s;}
+        .btn-doing { background: var(--doing); }
+        .btn-done { background: var(--done); }
+        .action-btn:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>☕ CVC Cafe - ระบบจัดการออเดอร์</h1>
+        <div id="connection-status" class="status-badge">กำลังเชื่อมต่อ...</div>
+    </div>
+
+    <div class="board">
+        <!-- คอลัมน์ออเดอร์ใหม่ -->
+        <div class="column" id="col-new">
+            <div class="col-header">🔴 ออเดอร์ใหม่ (New)</div>
+            <div class="order-list" id="list-new"></div>
+        </div>
+
+        <!-- คอลัมน์กำลังทำ -->
+        <div class="column" id="col-doing">
+            <div class="col-header">🟡 กำลังทำ (Doing)</div>
+            <div class="order-list" id="list-doing"></div>
+        </div>
+
+        <!-- คอลัมน์เสร็จแล้ว -->
+        <div class="column" id="col-done">
+            <div class="col-header">🟢 เสร็จแล้ว (Done)</div>
+            <div class="order-list" id="list-done"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://zkjnamlcnffsuqzvkznx.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpram5hbWxjbmZmc3VxenZrem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTk3MjIsImV4cCI6MjEwNTI5NTcyMn0.yUCmqbe5_tjsOBNEfx7qPXkmUiuoL5IX_y-tdjJuITY";
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ฟังก์ชันดึงออเดอร์ของวันนี้
+        async function fetchOrders() {
+            try {
+                // ดึงออเดอร์ 50 รายการล่าสุด
+                const { data, error } = await supabaseClient
+                    .from('orders')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (error) throw error;
+                renderOrders(data);
+
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        }
+
+        // ฟังก์ชันแจกแจงออเดอร์ลงช่องต่างๆ
+        function renderOrders(orders) {
+            const listNew = document.getElementById('list-new');
+            const listDoing = document.getElementById('list-doing');
+            const listDone = document.getElementById('list-done');
+
+            listNew.innerHTML = '';
+            listDoing.innerHTML = '';
+            listDone.innerHTML = '';
+
+            orders.forEach(order => {
+                // แปลงเวลาให้ดูง่าย
+                const timeStr = new Date(order.created_at).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
+                
+                // แยกรายละเอียดเมนูด้วย |
+                const itemsHtml = order.order_details.split(' | ').map(item => `<div>• ${item}</div>`).join('');
+
+                let cardHtml = `
+                    <div class="order-card">
+                        <div style="display:flex; justify-content:space-between;">
+                            <div class="order-id">${order.order_id}</div>
+                            <div style="font-size:12px; font-weight:bold; color:#A07855;">⏰ ${timeStr}</div>
+                        </div>
+                        <div class="order-name">👤 ${order.customer_name || 'ลูกค้าทั่วไป'}</div>
+                        <div class="order-items">${itemsHtml}</div>
+                `;
+
+                // ใส่ปุ่มตามสถานะ
+                if (order.status === 'New') {
+                    cardHtml += `<button class="action-btn btn-doing" onclick="updateStatus('${order.order_id}', 'Doing')">รับออเดอร์ -> กำลังทำ</button></div>`;
+                    listNew.insertAdjacentHTML('beforeend', cardHtml);
+                } else if (order.status === 'Doing') {
+                    cardHtml += `<button class="action-btn btn-done" onclick="updateStatus('${order.order_id}', 'Done')">ออเดอร์เสร็จแล้ว ✔️</button></div>`;
+                    listDoing.insertAdjacentHTML('beforeend', cardHtml);
+                } else if (order.status === 'Done') {
+                    cardHtml += `</div>`;
+                    listDone.insertAdjacentHTML('beforeend', cardHtml);
+                }
+            });
+        }
+
+        // ฟังก์ชันเปลี่ยนสถานะใน Supabase
+        async function updateStatus(orderId, newStatus) {
+            try {
+                const { error } = await supabaseClient
+                    .from('orders')
+                    .update({ status: newStatus })
+                    .eq('order_id', orderId);
+
+                if (error) throw error;
+                // ถ้าอัปเดตสำเร็จ ระบบ Real-time จะสั่งโหลดหน้าจอใหม่เอง
+            } catch (error) {
+                alert('เกิดข้อผิดพลาดในการเปลี่ยนสถานะ');
+                console.error(error);
+            }
+        }
+
+        // ตั้งค่าให้ระบบรอรับข้อมูล Real-time
+        function setupRealtime() {
+            const statusBadge = document.getElementById('connection-status');
+            
+            supabaseClient
+                .channel('public:orders')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+                    console.log('ข้อมูลอัปเดต!', payload);
+                    fetchOrders(); // สั่งดึงข้อมูลใหม่ทันทีที่มีการขยับ
+                })
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        statusBadge.innerText = '🟢 ออนไลน์ (อัปเดตทันที)';
+                        statusBadge.style.background = 'var(--done)';
+                    } else {
+                        statusBadge.innerText = '🔴 ออฟไลน์';
+                        statusBadge.style.background = 'var(--new)';
+                    }
+                });
+        }
+
+        fetchOrders();
+        setupRealtime();
+    </script>
+</body>
+</html>
