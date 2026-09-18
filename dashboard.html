@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVC Cafe - สรุปยอดขายรายวัน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #A07855; --bg: #FBF9F6; --text: #4A4A4A; --card-bg: #FFFFFF; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; }
+        body { background-color: #E8E4DD; display: flex; flex-direction: column; min-height: 100vh; color: var(--text); padding: 30px; align-items: center;}
+        
+        .container { width: 100%; max-width: 900px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: var(--card-bg); padding: 20px 30px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .header h1 { font-size: 26px; color: var(--primary); }
+        .date-display { font-size: 18px; font-weight: 500; color: #666; background: var(--bg); padding: 8px 16px; border-radius: 20px; }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-bottom: 30px; }
+        .summary-card { background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; border-bottom: 5px solid var(--primary);}
+        .summary-card.green { border-bottom-color: #27AE60; }
+        .summary-card.blue { border-bottom-color: #2980B9; }
+        
+        .card-title { font-size: 16px; color: #888; margin-bottom: 10px; font-weight: 500;}
+        .card-value { font-size: 42px; font-weight: 600; color: #333; }
+        .card-unit { font-size: 18px; color: #888; font-weight: 400; }
+
+        .ranking-section { background: var(--card-bg); padding: 30px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .ranking-section h2 { font-size: 20px; margin-bottom: 20px; color: #333; display: flex; align-items: center; gap: 10px;}
+        
+        .rank-list { display: flex; flex-direction: column; gap: 12px; }
+        .rank-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--bg); border-radius: 12px; border: 1px solid #F0EAE1;}
+        .rank-name { font-size: 18px; font-weight: 500; display: flex; align-items: center; gap: 15px;}
+        .rank-medal { font-size: 24px; width: 30px; text-align: center;}
+        .rank-qty { font-size: 18px; font-weight: 600; color: var(--primary); }
+
+        #loading { text-align: center; padding: 50px; font-size: 18px; color: #888; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>📊 สรุปยอดขายรายวัน (Daily Sales)</h1>
+            <div class="date-display" id="today-date">วัน...ที่...</div>
+        </div>
+
+        <div id="loading">กำลังประมวลผลยอดขาย... ⏳</div>
+
+        <div id="dashboard-content" style="display: none;">
+            <!-- กล่องสรุป 3 ตัว -->
+            <div class="summary-grid">
+                <div class="summary-card green">
+                    <div class="card-title">ยอดขายรวมวันนี้</div>
+                    <div class="card-value" id="val-revenue">0 <span class="card-unit">บาท</span></div>
+                </div>
+                <div class="summary-card blue">
+                    <div class="card-title">จำนวนที่ขายได้</div>
+                    <div class="card-value" id="val-cups">0 <span class="card-unit">แก้ว</span></div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-title">จำนวนออเดอร์</div>
+                    <div class="card-value" id="val-orders">0 <span class="card-unit">บิล</span></div>
+                </div>
+            </div>
+
+            <!-- จัดอันดับเมนูขายดี -->
+            <div class="ranking-section">
+                <h2>🏆 5 อันดับเมนูขายดีประจำวัน</h2>
+                <div class="rank-list" id="rank-container">
+                    <!-- ข้อมูลจะถูกแทรกตรงนี้ -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://zkjnamlcnffsuqzvkznx.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpram5hbWxjbmZmc3VxenZrem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTk3MjIsImV4cCI6MjEwNTI5NTcyMn0.yUCmqbe5_tjsOBNEfx7qPXkmUiuoL5IX_y-tdjJuITY";
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // เซ็ตวันที่ปัจจุบันโชว์บนหัวเว็บ
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('today-date').innerText = today.toLocaleDateString('th-TH', options);
+
+        async function fetchTodaySales() {
+            try {
+                // สร้างรูปแบบวันที่สำหรับดึงข้อมูลเฉพาะของ "วันนี้" (เวลา 00:00 เป็นต้นไป)
+                const offset = today.getTimezoneOffset();
+                const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+                const todayString = localToday.toISOString().split('T')[0];
+                const startOfDay = todayString + 'T00:00:00+07:00';
+
+                // ดึงข้อมูล orders ที่ถูกสร้างตั้งแต่วันนี้ตอนเที่ยงคืน
+                const { data, error } = await supabaseClient
+                    .from('orders')
+                    .select('*')
+                    .gte('created_at', startOfDay);
+
+                if (error) throw error;
+
+                calculateStats(data);
+
+            } catch (error) {
+                console.error("Error fetching sales:", error);
+                document.getElementById('loading').innerText = "เกิดข้อผิดพลาดในการดึงข้อมูล";
+            }
+        }
+
+        function calculateStats(orders) {
+            let totalRevenue = 0;
+            let totalCups = 0;
+            let totalOrderCount = orders.length;
+            let menuCount = {};
+
+            orders.forEach(order => {
+                // รวมเงิน
+                totalRevenue += order.total_price;
+
+                // ชำแหละรายการเครื่องดื่มจาก order_details
+                // รูปแบบคือ: "1x ชาองุ่น (เย็น) หวานปกติ | 2x ลาเต้ (ร้อน) หวานน้อย"
+                const items = order.order_details.split(' | ');
+                
+                items.forEach(itemStr => {
+                    // แยกจำนวน กับ ชื่อเมนูออกจากกัน
+                    const match = itemStr.match(/^(\d+)x\s+(.+)$/);
+                    if (match) {
+                        const qty = parseInt(match[1]);
+                        const fullDesc = match[2];
+                        
+                        totalCups += qty;
+
+                        // ตัดคำว่า (เย็น)/(ร้อน) และระดับความหวานออก เพื่อหาชื่อเมนูเพียวๆ
+                        const baseName = fullDesc.split(' (')[0].split(' หวาน')[0].trim();
+
+                        if (!menuCount[baseName]) {
+                            menuCount[baseName] = 0;
+                        }
+                        menuCount[baseName] += qty;
+                    }
+                });
+            });
+
+            // แปลง Object เป็น Array เพื่อเอามาเรียงลำดับ (Sort)
+            let sortedMenus = Object.keys(menuCount).map(key => {
+                return { name: key, qty: menuCount[key] };
+            });
+            sortedMenus.sort((a, b) => b.qty - a.qty); // เรียงจากมากไปน้อย
+
+            // อัปเดตตัวเลขขึ้นหน้าจอ
+            document.getElementById('val-revenue').innerText = totalRevenue.toLocaleString();
+            document.getElementById('val-cups').innerText = totalCups.toLocaleString();
+            document.getElementById('val-orders').innerText = totalOrderCount.toLocaleString();
+
+            // วาดตารางเมนูขายดี (เอาแค่ 5 อันดับแรก)
+            const rankContainer = document.getElementById('rank-container');
+            let rankHtml = '';
+            const medals = ['🥇', '🥈', '🥉', '🏅', '🏅'];
+
+            if (sortedMenus.length === 0) {
+                rankHtml = '<div style="text-align:center; color:#888; padding: 20px;">ยังไม่มีข้อมูลการขายในวันนี้</div>';
+            } else {
+                sortedMenus.slice(0, 5).forEach((menu, index) => {
+                    rankHtml += `
+                        <div class="rank-item">
+                            <div class="rank-name">
+                                <span class="rank-medal">${medals[index] || '☕'}</span>
+                                ${menu.name}
+                            </div>
+                            <div class="rank-qty">${menu.qty} แก้ว</div>
+                        </div>
+                    `;
+                });
+            }
+
+            rankContainer.innerHTML = rankHtml;
+
+            // ซ่อนข้อความโหลด และโชว์ Dashboard
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard-content').style.display = 'block';
+        }
+
+        fetchTodaySales();
+    </script>
+</body>
+</html>
