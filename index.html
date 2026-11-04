@@ -146,6 +146,27 @@
         .success-id { color: #888; font-size: 14px; margin-top: 4px; }
         .earned { display: inline-block; margin-top: 14px; background: #FFF8EC; color: #B9770E; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; }
 
+        /* สถานะออเดอร์ของฉัน */
+        .status-card { border-radius: 20px; padding: 22px 20px; text-align: center; margin: 14px 0 18px; border: 2px solid transparent; }
+        .status-card.st-card-New { background: #FDEDEC; border-color: #F5C6C1; }
+        .status-card.st-card-Doing { background: #FEF5E7; border-color: #F8D9A8; }
+        .status-card.st-card-Done { background: #E9F7EF; border-color: #A9DFBF; animation: readyPulse 1.6s ease-in-out 3; }
+        @keyframes readyPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        .status-emoji { font-size: 56px; line-height: 1.1; }
+        .status-label { font-size: 24px; font-weight: 600; margin-top: 6px; }
+        .st-card-New .status-label { color: var(--new); } .st-card-Doing .status-label { color: #D68910; } .st-card-Done .status-label { color: var(--done); }
+        .status-sub { font-size: 14px; color: #777; margin-top: 4px; }
+        .status-ahead { display: inline-block; margin-top: 10px; background: white; padding: 6px 14px; border-radius: 16px; font-size: 14px; font-weight: 500; color: var(--text); }
+        .status-steps { display: flex; justify-content: space-between; margin: 18px 6px 4px; position: relative; }
+        .status-steps::before { content: ''; position: absolute; top: 13px; left: 12%; right: 12%; height: 3px; background: #E5E5E5; }
+        .status-step { position: relative; flex: 1; font-size: 12px; color: #AAA; }
+        .status-step i { display: flex; width: 28px; height: 28px; margin: 0 auto 4px; border-radius: 50%; background: #E5E5E5; color: white; font-style: normal; font-size: 13px; align-items: center; justify-content: center; }
+        .status-step.on { color: var(--text); font-weight: 500; }
+        .status-step.on i { background: var(--primary); }
+        .status-items { text-align: left; background: white; border-radius: 12px; padding: 10px 14px; font-size: 14px; line-height: 1.6; margin-top: 14px; color: #555; }
+        .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--done); margin-right: 6px; animation: blink 1.4s infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+
         .toast { position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%); background: rgba(60,45,35,0.92); color: white; padding: 10px 18px; border-radius: 20px; font-size: 14px; z-index: 200; opacity: 0; transition: opacity 0.25s; pointer-events: none; max-width: 90%; text-align: center; }
         .toast.show { opacity: 1; }
     </style>
@@ -210,7 +231,7 @@
 
     <div class="bottom-nav">
         <div class="nav-item active" onclick="goHome()"><div class="nav-icon">🏠</div>หน้าแรก</div>
-        <div class="nav-item" onclick="focusSearch()"><div class="nav-icon">🔍</div>ค้นหา</div>
+        <div class="nav-item" onclick="openStatus()"><div class="nav-icon">🔔</div>ออเดอร์</div>
         <div class="nav-item" onclick="openCart()">
             <div class="nav-icon">🛒</div>ตะกร้า
             <div class="cart-badge" id="cart-count">0</div>
@@ -308,6 +329,17 @@
     </div>
 </div>
 
+<!-- Modal 5: สถานะออเดอร์ของฉัน (เรียลไทม์) -->
+<div class="modal-overlay" id="status-modal">
+    <div class="modal-content">
+        <div class="close-row"><button onclick="closeStatus()">✖</button></div>
+        <div class="modal-header">🔔 ออเดอร์ของฉัน</div>
+        <div style="font-size:13px; color:#888;"><span class="live-dot"></span>อัปเดตสถานะอัตโนมัติ ไม่ต้องรีเฟรช</div>
+        <div id="status-body"></div>
+        <button class="add-cart-btn" onclick="closeStatus(); goHome();">☕ สั่งเพิ่ม</button>
+    </div>
+</div>
+
 <!-- Modal 4: สั่งสำเร็จ -->
 <div class="modal-overlay" id="success-modal">
     <div class="modal-content">
@@ -318,7 +350,8 @@
             <div class="success-id" id="success-id"></div>
             <div class="earned" id="success-earned" style="display:none;"></div>
         </div>
-        <button class="add-cart-btn" onclick="closeSuccess()">กลับหน้าแรก</button>
+        <button class="add-cart-btn" onclick="closeSuccess(); openStatus();">🔔 ดูสถานะออเดอร์</button>
+        <button class="add-cart-btn" style="background:white; color:var(--primary); border:2px solid var(--primary); box-shadow:none; margin-top:10px;" onclick="closeSuccess()">กลับหน้าแรก</button>
     </div>
 </div>
 
@@ -438,6 +471,8 @@
 
         favorites = loadStored(`cvc_fav_${userProfile.userId}`, []);
         await Promise.all([loadCustomer(), loadOrderHistory()]);
+        setupOrderRealtime();
+        if (getRequestedView() === 'orders') openStatus();
         renderPointsCard();
         applyFilters();
     }
@@ -649,12 +684,6 @@
     function clearSearch() {
         document.getElementById('search-input').value = '';
         applyFilters();
-    }
-
-    function focusSearch() {
-        const input = document.getElementById('search-input');
-        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        input.focus();
     }
 
     function scrollToMenu() {
@@ -1086,6 +1115,122 @@
 
     function closeProfile() {
         document.getElementById('profile-modal').style.display = 'none';
+    }
+
+    // ---------------- สถานะออเดอร์ของฉัน ----------------
+    const STATUS_INFO = {
+        New:   { emoji: '📝', label: 'ร้านได้รับออเดอร์แล้ว', sub: 'รอบาริสต้ารับออเดอร์' },
+        Doing: { emoji: '☕', label: 'กำลังทำเครื่องดื่ม', sub: 'อีกสักครู่นะคะ' },
+        Done:  { emoji: '🎉', label: 'เสร็จแล้ว! มารับได้เลย', sub: 'รับที่เคาน์เตอร์ แจ้งชื่อกับพนักงานได้เลย' }
+    };
+    let lastSeenStatus = {};
+
+    // ลิงก์ https://liff.line.me/<LIFF_ID>?view=orders → เปิดหน้าสถานะทันที
+    function getRequestedView() {
+        const params = new URLSearchParams(location.search);
+        if (params.get('view')) return params.get('view');
+        const state = params.get('liff.state'); // LIFF ส่งค่ามาในรูป liff.state ก่อน redirect
+        return state ? new URLSearchParams(state.replace(/^[^?]*\?/, '')).get('view') : null;
+    }
+
+    function startOfTodayIso() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + 'T00:00:00+07:00';
+    }
+
+    // จำนวนออเดอร์ที่ยังไม่เสร็จและสั่งก่อนเรา (ของวันนี้)
+    async function countOrdersAhead(order) {
+        const { count, error } = await supabaseClient
+            .from('orders')
+            .select('order_id', { count: 'exact', head: true })
+            .in('status', ['New', 'Doing'])
+            .gte('created_at', startOfTodayIso())
+            .lt('created_at', order.created_at);
+        return error ? null : count;
+    }
+
+    async function openStatus() {
+        document.getElementById('status-modal').style.display = 'flex';
+        document.getElementById('status-body').innerHTML = '<div style="text-align:center; color:#888; padding:30px 0;">กำลังโหลด... ⏳</div>';
+        await loadOrderHistory();
+        await renderStatus();
+    }
+
+    function closeStatus() {
+        document.getElementById('status-modal').style.display = 'none';
+    }
+
+    async function renderStatus() {
+        const body = document.getElementById('status-body');
+        if (userProfile.userId === 'guest') {
+            body.innerHTML = '<div style="text-align:center; color:#888; padding:30px 0;">เปิดผ่าน LINE เพื่อดูสถานะออเดอร์ของคุณ</div>';
+            return;
+        }
+
+        const today = startOfTodayIso();
+        const todayOrders = orderHistory.filter(o => new Date(o.created_at) >= new Date(today));
+        if (todayOrders.length === 0) {
+            body.innerHTML = '<div style="text-align:center; color:#888; padding:30px 0;">วันนี้ยังไม่มีออเดอร์<br>สั่งเครื่องดื่มแล้วมาดูสถานะได้ที่นี่ ☕</div>';
+            return;
+        }
+
+        // โชว์ออเดอร์ที่ยังไม่เสร็จก่อน (เก่าสุดก่อน) ถ้าเสร็จหมดแล้วโชว์อันล่าสุด
+        const pending = todayOrders.filter(o => o.status !== 'Done').sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const shown = pending.length ? pending : [todayOrders[0]];
+        const aheadCounts = await Promise.all(shown.map(o => o.status === 'New' ? countOrdersAhead(o) : null));
+        const stepOrder = ['New', 'Doing', 'Done'];
+
+        body.innerHTML = shown.map((o, idx) => {
+            const info = STATUS_INFO[o.status] || STATUS_INFO.New;
+            const reached = stepOrder.indexOf(o.status);
+            const ahead = aheadCounts[idx];
+            const time = new Date(o.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            return `
+            <div class="status-card st-card-${escapeHtml(o.status)}">
+                <div class="status-emoji">${info.emoji}</div>
+                <div class="status-label">${info.label}</div>
+                <div class="status-sub">${info.sub}</div>
+                ${ahead !== null && ahead !== undefined ? `<div class="status-ahead">${ahead === 0 ? '✨ คิวถัดไปคือคุณ' : `⏳ มีคิวก่อนหน้า ${ahead} คิว`}</div>` : ''}
+                <div class="status-steps">
+                    ${['รับออเดอร์', 'กำลังทำ', 'พร้อมรับ'].map((label, i) => `<div class="status-step ${i <= reached ? 'on' : ''}"><i>${i < reached || o.status === 'Done' ? '✓' : i + 1}</i>${label}</div>`).join('')}
+                </div>
+                <div class="status-items">
+                    <div style="font-size:12px; color:#999;">${escapeHtml(o.order_id)} • สั่งเมื่อ ${time} น. • ฿${o.total_price}</div>
+                    ${o.order_details.split(' | ').map(t => '• ' + escapeHtml(t.trim())).join('<br>')}
+                </div>
+            </div>`;
+        }).join('') + (todayOrders.length > shown.length ? `<div style="text-align:center; font-size:13px; color:#888; margin-bottom:14px;">ดูออเดอร์ก่อนหน้าได้ที่ <a style="color:var(--primary); cursor:pointer;" onclick="closeStatus(); openProfile();">ประวัติการสั่ง</a></div>` : '');
+    }
+
+    // เตือนเมื่อออเดอร์ของเราเสร็จ (สั่น + ข้อความ) แม้ไม่ได้เปิดหน้าสถานะอยู่
+    function notifyStatusChanges() {
+        orderHistory.forEach(o => {
+            const before = lastSeenStatus[o.order_id];
+            if (before && before !== 'Done' && o.status === 'Done') {
+                showToast('🎉 เครื่องดื่มของคุณเสร็จแล้ว มารับได้เลย!');
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                if (document.getElementById('status-modal').style.display !== 'flex') openStatus();
+            }
+            lastSeenStatus[o.order_id] = o.status;
+        });
+    }
+
+    let statusRefreshTimer = null;
+    function setupOrderRealtime() {
+        if (userProfile.userId === 'guest') return;
+        orderHistory.forEach(o => { lastSeenStatus[o.order_id] = o.status; });
+        // ฟังทุกออเดอร์ เพราะออเดอร์ของคนอื่นที่เสร็จทำให้ "คิวก่อนหน้า" ของเราลดลงด้วย
+        supabaseClient
+            .channel('my-orders')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+                clearTimeout(statusRefreshTimer);
+                statusRefreshTimer = setTimeout(async () => {
+                    await loadOrderHistory();
+                    notifyStatusChanges();
+                    if (document.getElementById('status-modal').style.display === 'flex') renderStatus();
+                }, 400);
+            })
+            .subscribe();
     }
 
     // กดพื้นหลังมืดเพื่อปิด Modal
