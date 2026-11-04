@@ -61,6 +61,21 @@
 
         #loading { text-align: center; padding: 50px; font-size: 18px; color: #888; }
 
+        /* ฟอร์มเพิ่ม/แก้ไขเมนู */
+        .toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+        .form-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .form-box { background: white; border-radius: 20px; padding: 24px; width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .form-box h2 { font-size: 20px; color: var(--primary); margin-bottom: 16px; }
+        .form-label { display: block; font-size: 14px; font-weight: 500; color: #555; margin: 12px 0 6px; }
+        .form-box .field { width: 100%; }
+        .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .price-grid label { font-size: 13px; color: #888; }
+        .form-hint { font-size: 12px; color: #999; margin-top: 4px; }
+        .photo-preview { width: 72px; height: 72px; border-radius: 12px; background: var(--bg); border: 1px solid #F0EAE1; display: flex; align-items: center; justify-content: center; font-size: 34px; overflow: hidden; flex-shrink: 0; }
+        .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .form-actions .btn { flex: 1; padding: 12px; }
+
         @media (max-width: 600px) {
             body { padding: 15px; }
             .menu-row { padding: 12px 15px; flex-wrap: wrap; }
@@ -83,9 +98,52 @@
 
         <!-- แท็บ 1: เมนู -->
         <div id="section-menu">
+            <div class="toolbar"><button class="btn" onclick="openMenuForm()">➕ เพิ่มเมนูใหม่</button></div>
             <div id="loading">กำลังโหลดรายการเมนู... ⏳</div>
             <div class="menu-table" id="menu-list" style="display: none;"></div>
             <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="uploadPhoto(this.files[0])">
+
+            <!-- ฟอร์มเพิ่ม/แก้ไขเมนู -->
+            <div class="form-overlay" id="menu-form">
+                <div class="form-box">
+                    <h2 id="form-title">➕ เพิ่มเมนูใหม่</h2>
+
+                    <label class="form-label">ชื่อเมนู *</label>
+                    <input type="text" id="f-name" class="field" placeholder="เช่น อเมริกาโน่ ยูสุ">
+
+                    <label class="form-label">หมวด *</label>
+                    <select id="f-category" class="field">
+                        <option value="กาแฟ">☕ กาแฟ</option>
+                        <option value="ชา/นม">🍵 ชา/นม</option>
+                        <option value="ชาผลไม้">🍑 ชาผลไม้</option>
+                        <option value="สมูทตี้">🥤 สมูทตี้</option>
+                        <option value="โซดา">🍹 โซดา</option>
+                    </select>
+
+                    <label class="form-label">ราคา (บาท) *</label>
+                    <div class="price-grid">
+                        <div><label>ร้อน</label><input type="number" id="f-hot" class="field" min="0" placeholder="-"></div>
+                        <div><label>เย็น</label><input type="number" id="f-ice" class="field" min="0" placeholder="-"></div>
+                        <div><label>ปั่น</label><input type="number" id="f-frappe" class="field" min="0" placeholder="-"></div>
+                    </div>
+                    <div class="form-hint">เว้นว่างแบบที่ไม่ได้ขาย ลูกค้าจะไม่เห็นตัวเลือกนั้น (ต้องมีอย่างน้อย 1 แบบ)</div>
+
+                    <label class="form-label">รูปเมนู</label>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="photo-preview" id="f-photo-preview">☕</div>
+                        <div>
+                            <button type="button" class="btn btn-ghost" onclick="document.getElementById('f-photo').click()">📷 เลือกรูป</button>
+                            <div class="form-hint">ไม่ใส่ก็ได้ จะใช้อีโมจิตามหมวดไปก่อน</div>
+                        </div>
+                        <input type="file" id="f-photo" accept="image/*" style="display:none;" onchange="previewFormPhoto(this.files[0])">
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-ghost" onclick="closeMenuForm()">ยกเลิก</button>
+                        <button class="btn" id="f-save" onclick="saveMenuForm()">บันทึก</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- แท็บ 2: ท็อปปิ้ง -->
@@ -259,6 +317,7 @@
                                 <div class="menu-name">${escapeHtml(menu.name)} (${escapeHtml(menu.menu_id)})</div>
                                 <div class="menu-cat">หมวด: ${escapeHtml(menu.category)} | เริ่มต้น ฿${menu.price_hot || menu.price_ice || menu.price_frappe || 0}</div>
                                 <div class="photo-links">
+                                    <a onclick="openMenuForm('${menu.menu_id}')">✏️ แก้ไข</a>
                                     <a onclick="choosePhoto('${menu.menu_id}')">📷 ${hasPhoto ? 'เปลี่ยนรูป' : 'ใส่รูป'}</a>
                                     ${hasPhoto ? `<a class="remove" onclick="removePhoto('${menu.menu_id}')">ลบรูป</a>` : ''}
                                 </div>
@@ -280,6 +339,102 @@
             container.innerHTML = html;
             document.getElementById('loading').style.display = 'none';
             container.style.display = 'block';
+        }
+
+        // ================= เพิ่ม / แก้ไขเมนู =================
+        let editingMenuId = null;   // null = เพิ่มเมนูใหม่
+        let formPhotoFile = null;
+
+        // รหัสถัดไป เช่น M030 → M031
+        function nextMenuId() {
+            const nums = Object.keys(menusById).map(id => parseInt(id.replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
+            const next = (nums.length ? Math.max(...nums) : 0) + 1;
+            return 'M' + String(next).padStart(3, '0');
+        }
+
+        function readPrice(id) {
+            const raw = document.getElementById(id).value.trim();
+            if (raw === '') return null;
+            const n = parseInt(raw, 10);
+            return isNaN(n) || n < 0 ? NaN : n;
+        }
+
+        function openMenuForm(menuId) {
+            const menu = menuId ? menusById[menuId] : null;
+            editingMenuId = menu ? menuId : null;
+            formPhotoFile = null;
+            document.getElementById('f-photo').value = '';
+
+            document.getElementById('form-title').innerText = menu ? `✏️ แก้ไขเมนู (${menuId})` : `➕ เพิ่มเมนูใหม่ (${nextMenuId()})`;
+            document.getElementById('f-name').value = menu ? menu.name : '';
+            document.getElementById('f-category').value = menu ? menu.category : 'กาแฟ';
+            document.getElementById('f-hot').value = menu && menu.price_hot != null ? menu.price_hot : '';
+            document.getElementById('f-ice').value = menu && menu.price_ice != null ? menu.price_ice : '';
+            document.getElementById('f-frappe').value = menu && menu.price_frappe != null ? menu.price_frappe : '';
+            document.getElementById('f-photo-preview').innerHTML = renderIcon(menu ? menu.image_url : CATEGORY_EMOJI['กาแฟ']);
+
+            document.getElementById('menu-form').style.display = 'flex';
+            document.getElementById('f-name').focus();
+        }
+
+        function closeMenuForm() {
+            document.getElementById('menu-form').style.display = 'none';
+        }
+
+        function previewFormPhoto(file) {
+            if (!file) return;
+            formPhotoFile = file;
+            const url = URL.createObjectURL(file);
+            document.getElementById('f-photo-preview').innerHTML = `<img src="${url}" alt="">`;
+        }
+
+        async function saveMenuForm() {
+            const name = document.getElementById('f-name').value.trim();
+            const category = document.getElementById('f-category').value;
+            const prices = { price_hot: readPrice('f-hot'), price_ice: readPrice('f-ice'), price_frappe: readPrice('f-frappe') };
+
+            if (!name) { alert('กรุณากรอกชื่อเมนู'); return; }
+            if (Object.values(prices).some(p => Number.isNaN(p))) { alert('ราคาต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป'); return; }
+            if (Object.values(prices).every(p => p === null)) { alert('กรุณาใส่ราคาอย่างน้อย 1 แบบ (ร้อน / เย็น / ปั่น)'); return; }
+            const duplicate = Object.values(menusById).find(m => m.name === name && m.menu_id !== editingMenuId);
+            if (duplicate) { alert(`มีเมนูชื่อ "${name}" อยู่แล้ว (${duplicate.menu_id})`); return; }
+
+            const btn = document.getElementById('f-save');
+            btn.disabled = true;
+            btn.innerText = 'กำลังบันทึก...';
+
+            try {
+                let menuId = editingMenuId;
+                if (menuId) {
+                    const menu = menusById[menuId];
+                    const changes = { name, category, ...prices };
+                    // ยังเป็นอีโมจิอยู่และเปลี่ยนหมวด ให้อีโมจิเปลี่ยนตามหมวดใหม่
+                    if (!isPhotoUrl(menu.image_url) && category !== menu.category) changes.image_url = CATEGORY_EMOJI[category] || '☕';
+                    const { error } = await supabaseClient.from('menu').update(changes).eq('menu_id', menuId);
+                    if (error) throw error;
+                    Object.assign(menu, changes);
+                } else {
+                    menuId = nextMenuId();
+                    const newMenu = { menu_id: menuId, name, category, ...prices, image_url: CATEGORY_EMOJI[category] || '☕', is_active: true };
+                    const { error } = await supabaseClient.from('menu').insert([newMenu]);
+                    if (error) throw error;
+                    menusById[menuId] = newMenu;
+                }
+
+                closeMenuForm();
+                renderMenuTable(Object.values(menusById).sort((a, b) => a.menu_id.localeCompare(b.menu_id)));
+
+                if (formPhotoFile) {
+                    photoTargetId = menuId;
+                    await uploadPhoto(formPhotoFile);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('บันทึกเมนูไม่สำเร็จ: ' + (error.message || 'กรุณาลองใหม่'));
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'บันทึก';
+            }
         }
 
         async function toggleMenuStatus(menuId, checkbox) {

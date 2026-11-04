@@ -108,3 +108,7 @@ create policy "menu-images public delete" on storage.objects for delete using (b
 -- ---------- 8. เวลาที่ทำออเดอร์เสร็จ (ใช้กับจอคิว) ----------
 -- admin.html ใส่ค่านี้ตอนกด "ออเดอร์เสร็จแล้ว" — queue.html โชว์ "รับได้เลย" 30 นาทีนับจากเวลานี้
 alter table public.orders add column if not exists done_at timestamptz;
+
+-- ---------- 9. เพิ่มเมนูใหม่จากหน้า admin_menu.html ----------
+drop policy if exists "menu public insert" on public.menu;
+create policy "menu public insert" on public.menu for insert with check (true);
