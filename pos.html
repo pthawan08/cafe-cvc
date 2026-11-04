@@ -86,6 +86,38 @@
         .success-icon { font-size: 60px; }
         .success-id { font-size: 15px; color: #888; margin: 6px 0 4px; }
         .success-name { font-size: 28px; font-weight: 600; color: var(--primary); margin-bottom: 20px; }
+
+        /* ===== iPad แนวนอน / จอกว้าง: เมนูซ้าย + บิลค้างไว้ด้านขวา ===== */
+        @media (min-width: 900px) {
+            :root { --bill-width: 360px; }
+            body { justify-content: flex-start; }
+            #app { max-width: none; margin-right: var(--bill-width); padding-bottom: 20px; box-shadow: none; }
+            .menu-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+            .menu-img { height: 100px; }
+            .bottom-nav { display: none; }
+
+            /* ตะกร้ากลายเป็นแผงบิลด้านขวา เปิดค้างไว้ตลอด */
+            #cart-modal { display: flex !important; left: auto; right: 0; width: var(--bill-width); background: none; backdrop-filter: none; align-items: stretch; z-index: 60; }
+            #cart-modal .modal-content { display: flex; flex-direction: column; height: 100vh; max-height: none; border-radius: 0; animation: none; padding: 20px 20px 24px !important; box-shadow: -4px 0 20px rgba(0,0,0,0.06); border-left: 1px solid #F0EAE1; }
+            #cart-modal .modal-content > div:first-child { display: none; }
+            #cart-modal .modal-header { font-size: 20px; }
+            #cart-items { flex: 1; max-height: none !important; margin-top: 8px !important; }
+            #cart-modal .cart-item-row { padding: 12px 0; }
+            #cart-modal .modal-content > div[style*="font-size: 20px"] { margin: 15px 0 !important; }
+            #cart-modal .customer-input { padding: 12px; margin-bottom: 12px; }
+            #cart-modal .pay-grid { margin-bottom: 12px; }
+            #cart-modal .add-cart-btn { padding: 16px; }
+
+            /* ป๊อปอัปเลือกเมนู / สำเร็จ ให้อยู่กลางฝั่งเมนู */
+            #product-modal, #success-modal { align-items: center; padding-right: var(--bill-width); }
+            #product-modal .modal-content, #success-modal .modal-content { max-width: 560px; border-radius: 24px; max-height: 92vh; animation: popIn 0.2s ease-out; }
+            @keyframes popIn { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+            #product-modal .option-group { margin-bottom: 16px; }
+            #product-modal .checkbox-row { padding: 11px 0; }
+            #product-modal .qty-control { margin: 16px 0; }
+            /* ปุ่มเพิ่มลงบิลติดขอบล่างเสมอ ไม่ต้องเลื่อนหา */
+            #product-modal .add-cart-btn { position: sticky; bottom: -1px; box-shadow: 0 -8px 16px white, 0 4px 12px rgba(160, 120, 85, 0.3); }
+        }
     </style>
 </head>
 <body>
@@ -414,15 +446,20 @@
 
     function updateCartBadge() {
         document.getElementById('cart-count').innerText = `${cart.length} รายการ`;
+        renderCart();
     }
 
     function removeFromCart(index) {
         cart.splice(index, 1);
         updateCartBadge();
-        openCart();
     }
 
-    function openCart() {
+    // แนวนอน (จอกว้าง) บิลเปิดค้างไว้ด้านขวาตลอด
+    function isWideLayout() {
+        return window.matchMedia('(min-width: 900px)').matches;
+    }
+
+    function renderCart() {
         let html = '';
         let total = 0;
 
@@ -448,9 +485,13 @@
 
         document.getElementById('cart-items').innerHTML = html;
         document.getElementById('cart-total').innerText = total;
+    }
+
+    function openCart() {
+        renderCart();
         document.getElementById('cart-modal').style.display = 'flex';
-        // โฟกัสไปที่ช่องใส่ชื่อลูกค้าทันทีที่เปิดตะกร้า
-        document.getElementById('pos-customer-name').focus();
+        // โฟกัสไปที่ช่องใส่ชื่อลูกค้าทันทีที่เปิดตะกร้า (แนวนอนไม่โฟกัส กันคีย์บอร์ดเด้งบังเมนู)
+        if (!isWideLayout()) document.getElementById('pos-customer-name').focus();
     }
 
     function closeCart() { document.getElementById('cart-modal').style.display = 'none'; }
@@ -531,6 +572,7 @@
     }
 
     document.getElementById('receipt-width').value = getReceiptWidth();
+    renderCart();
     fetchToppings();
     fetchMenu();
     setupRealtime();

@@ -89,3 +89,18 @@ begin
     alter publication supabase_realtime add table public.toppings;
 exception when duplicate_object then null;
 end $$;
+
+-- ---------- 7. ที่เก็บรูปเมนู (Supabase Storage) ----------
+-- admin_menu.html ย่อรูปแล้วอัปโหลดมาที่ bucket นี้ จากนั้นใส่ลิงก์ลง menu.image_url
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('menu-images', 'menu-images', true, 2097152, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do nothing;
+
+drop policy if exists "menu-images public read" on storage.objects;
+drop policy if exists "menu-images public insert" on storage.objects;
+drop policy if exists "menu-images public update" on storage.objects;
+drop policy if exists "menu-images public delete" on storage.objects;
+create policy "menu-images public read" on storage.objects for select using (bucket_id = 'menu-images');
+create policy "menu-images public insert" on storage.objects for insert with check (bucket_id = 'menu-images');
+create policy "menu-images public update" on storage.objects for update using (bucket_id = 'menu-images');
+create policy "menu-images public delete" on storage.objects for delete using (bucket_id = 'menu-images');

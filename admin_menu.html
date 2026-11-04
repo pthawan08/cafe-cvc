@@ -25,7 +25,12 @@
         .menu-row:last-child { border-bottom: none; }
 
         .menu-info { display: flex; align-items: center; gap: 15px; }
-        .menu-icon { font-size: 30px; width: 45px; height: 45px; background: var(--bg); display: flex; justify-content: center; align-items: center; border-radius: 12px; }
+        .menu-icon { font-size: 30px; width: 56px; height: 56px; flex-shrink: 0; background: var(--bg); display: flex; justify-content: center; align-items: center; border-radius: 12px; overflow: hidden; position: relative; cursor: pointer; border: 1px solid #F0EAE1; }
+        .menu-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .menu-icon.uploading::after { content: '⏳'; position: absolute; inset: 0; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .photo-links { margin-top: 4px; font-size: 13px; }
+        .photo-links a { color: var(--primary); cursor: pointer; margin-right: 12px; text-decoration: none; }
+        .photo-links a.remove { color: #999; }
         .menu-name { font-size: 16px; font-weight: 600; color: #333; }
         .menu-cat { font-size: 13px; color: #888; }
 
@@ -80,6 +85,7 @@
         <div id="section-menu">
             <div id="loading">กำลังโหลดรายการเมนู... ⏳</div>
             <div class="menu-table" id="menu-list" style="display: none;"></div>
+            <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="uploadPhoto(this.files[0])">
         </div>
 
         <!-- แท็บ 2: ท็อปปิ้ง -->
@@ -129,21 +135,133 @@
             }
         }
 
+        // ================= รูปเมนู =================
+        const PHOTO_BUCKET = 'menu-images';
+        const PHOTO_MAX_SIZE = 800; // ด้านยาวสุด (px) หลังย่อ
+        const CATEGORY_EMOJI = { 'กาแฟ': '☕', 'ชา/นม': '🍵', 'ชาผลไม้': '🍑', 'สมูทตี้': '🥤', 'โซดา': '🍹' };
+        let menusById = {};
+        let photoTargetId = null;
+
+        function isPhotoUrl(value) {
+            return /^https?:\/\//.test(value || '');
+        }
+
+        function renderIcon(imageUrl) {
+            if (isPhotoUrl(imageUrl)) return `<img src="${escapeHtml(imageUrl)}" alt="">`;
+            return escapeHtml(imageUrl || '☕');
+        }
+
+        function choosePhoto(menuId) {
+            photoTargetId = menuId;
+            const input = document.getElementById('photo-input');
+            input.value = '';
+            input.click();
+        }
+
+        // ย่อรูปให้ด้านยาวไม่เกิน PHOTO_MAX_SIZE แล้วแปลงเป็น JPEG เพื่อให้หน้าลูกค้าโหลดเร็ว
+        function resizeImage(file) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const scale = Math.min(1, PHOTO_MAX_SIZE / Math.max(img.width, img.height));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    URL.revokeObjectURL(url);
+                    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('แปลงรูปไม่สำเร็จ')), 'image/jpeg', 0.82);
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('เปิดไฟล์รูปไม่ได้')); };
+                img.src = url;
+            });
+        }
+
+        // path ในที่เก็บรูป เช่น "M001/1730700000000.jpg" (คืน null ถ้าไม่ใช่รูปจาก bucket นี้)
+        function storagePathFromUrl(url) {
+            const marker = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
+            return url && url.includes(marker) ? decodeURIComponent(url.split(marker)[1]) : null;
+        }
+
+        async function uploadPhoto(file) {
+            const menuId = photoTargetId;
+            const menu = menusById[menuId];
+            if (!file || !menu) return;
+
+            const iconEl = document.getElementById(`menu-icon-${menuId}`);
+            iconEl.classList.add('uploading');
+
+            try {
+                const blob = await resizeImage(file);
+                const path = `${menuId}/${Date.now()}.jpg`;
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from(PHOTO_BUCKET)
+                    .upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+                if (uploadError) throw uploadError;
+
+                const { data } = supabaseClient.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+                const { error: updateError } = await supabaseClient.from('menu').update({ image_url: data.publicUrl }).eq('menu_id', menuId);
+                if (updateError) throw updateError;
+
+                // ลบรูปเก่าทิ้ง ไม่ให้เปลืองพื้นที่
+                const oldPath = storagePathFromUrl(menu.image_url);
+                if (oldPath) await supabaseClient.storage.from(PHOTO_BUCKET).remove([oldPath]);
+
+                menu.image_url = data.publicUrl;
+                renderMenuTable(Object.values(menusById));
+
+            } catch (error) {
+                console.error(error);
+                alert('อัปโหลดรูปไม่สำเร็จ: ' + (error.message || 'กรุณาลองใหม่'));
+                iconEl.classList.remove('uploading');
+            }
+        }
+
+        async function removePhoto(menuId) {
+            const menu = menusById[menuId];
+            if (!menu || !confirm(`ลบรูปของ "${menu.name}" แล้วกลับไปใช้อีโมจิ?`)) return;
+
+            const emoji = CATEGORY_EMOJI[menu.category] || '☕';
+            try {
+                const { error } = await supabaseClient.from('menu').update({ image_url: emoji }).eq('menu_id', menuId);
+                if (error) throw error;
+
+                const oldPath = storagePathFromUrl(menu.image_url);
+                if (oldPath) await supabaseClient.storage.from(PHOTO_BUCKET).remove([oldPath]);
+
+                menu.image_url = emoji;
+                renderMenuTable(Object.values(menusById));
+            } catch (error) {
+                console.error(error);
+                alert('ลบรูปไม่สำเร็จ');
+            }
+        }
+
         function renderMenuTable(menus) {
             const container = document.getElementById('menu-list');
             let html = '';
+            menusById = {};
 
             menus.forEach(menu => {
-                const icon = menu.image_url || '☕';
+                menusById[menu.menu_id] = menu;
+                const hasPhoto = isPhotoUrl(menu.image_url);
                 const isActive = menu.is_active;
 
                 html += `
                     <div class="menu-row">
                         <div class="menu-info">
-                            <div class="menu-icon">${escapeHtml(icon)}</div>
+                            <div class="menu-icon" id="menu-icon-${menu.menu_id}" onclick="choosePhoto('${menu.menu_id}')" title="กดเพื่อใส่รูป">${renderIcon(menu.image_url)}</div>
                             <div>
                                 <div class="menu-name">${escapeHtml(menu.name)} (${escapeHtml(menu.menu_id)})</div>
                                 <div class="menu-cat">หมวด: ${escapeHtml(menu.category)} | เริ่มต้น ฿${menu.price_hot || menu.price_ice || menu.price_frappe || 0}</div>
+                                <div class="photo-links">
+                                    <a onclick="choosePhoto('${menu.menu_id}')">📷 ${hasPhoto ? 'เปลี่ยนรูป' : 'ใส่รูป'}</a>
+                                    ${hasPhoto ? `<a class="remove" onclick="removePhoto('${menu.menu_id}')">ลบรูป</a>` : ''}
+                                </div>
                             </div>
                         </div>
                         <div class="menu-actions">

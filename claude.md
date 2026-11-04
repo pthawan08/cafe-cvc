@@ -110,6 +110,8 @@
 6. **`admin_menu.html` (Back-office Menu Management)**
    - แท็บเมนู: Toggle `is_active` ของตาราง `menu`
    - แท็บท็อปปิ้ง: เพิ่ม / แก้ชื่อ-ราคา / ลบ / Toggle `is_active` ของตาราง `toppings`
+   - รูปเมนู: กด 📷 เลือกรูป → ย่อเหลือด้านยาว 800px JPEG → อัปโหลดเข้า Storage bucket `menu-images` (path `${menu_id}/${timestamp}.jpg`) → ใส่ public URL ลง `menu.image_url` และลบไฟล์เก่าทิ้ง; "ลบรูป" คืนค่าเป็นอีโมจิตามหมวด
+   - หน้าเว็บทุกหน้าแสดง `image_url` เป็นรูปถ้าขึ้นต้นด้วย `http(s)://` ไม่งั้นแสดงเป็นอีโมจิ
 
 7. **`receipt.js` (Shared Receipt Printing)**
    - `printReceipt(order, items?)` ใช้ใน `pos.html` (พิมพ์อัตโนมัติหลังส่งออเดอร์) และ `admin.html` (ปุ่ม 🖨️ บนการ์ด)
