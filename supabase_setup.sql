@@ -112,3 +112,16 @@ alter table public.orders add column if not exists done_at timestamptz;
 -- ---------- 9. เพิ่มเมนูใหม่จากหน้า admin_menu.html ----------
 drop policy if exists "menu public insert" on public.menu;
 create policy "menu public insert" on public.menu for insert with check (true);
+
+-- ---------- 10. เปิด Realtime ให้ orders และ menu ----------
+-- (เดิมเปิดไว้แค่ toppings ทำให้หน้าลูกค้า/จอคิว/เสียงแจ้งเตือนในบอร์ดบาริสต้า ไม่อัปเดตเอง)
+do $$
+begin
+    alter publication supabase_realtime add table public.orders;
+exception when duplicate_object then null;
+end $$;
+do $$
+begin
+    alter publication supabase_realtime add table public.menu;
+exception when duplicate_object then null;
+end $$;

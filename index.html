@@ -1231,6 +1231,18 @@
                 }, 400);
             })
             .subscribe();
+
+        // สำรองกรณีการเชื่อมต่อเรียลไทม์หลุด (จอมือถือดับ / สลับแอปใน LINE จะพลาดการแจ้งเตือนช่วงนั้น)
+        // กลับมาที่หน้านี้เมื่อไรโหลดใหม่ทันที และระหว่างเปิดหน้าสถานะอยู่ โหลดใหม่ทุก 20 วินาที
+        const refreshNow = async () => {
+            await loadOrderHistory();
+            notifyStatusChanges();
+            if (document.getElementById('status-modal').style.display === 'flex') renderStatus();
+        };
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshNow(); });
+        setInterval(() => {
+            if (document.visibilityState === 'visible' && document.getElementById('status-modal').style.display === 'flex') refreshNow();
+        }, 20000);
     }
 
     // กดพื้นหลังมืดเพื่อปิด Modal

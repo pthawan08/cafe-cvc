@@ -53,7 +53,7 @@
 - `total_price` (int4/numeric) — ยอดเงินรวมทั้งบิล (บาท)
 - `status` (text) — สถานะออเดอร์ มี 3 ค่า: `'New'`, `'Doing'`, `'Done'`
 - `payment_method` (text) — ช่องทางชำระเงิน เช่น `'Cash'`, `'Transfer'`
-- **Realtime & RLS:** เปิด `supabase_realtime` บนตาราง `orders` แล้ว และเปิด RLS Public สำหรับ `SELECT`, `INSERT`, `UPDATE` เรียบร้อยแล้ว
+- **Realtime & RLS:** เปิด `supabase_realtime` บนตาราง `orders`, `menu`, `toppings` แล้ว (ตรวจจริงเมื่อ 2026-11-04 — ก่อนหน้านั้น orders ไม่ได้อยู่ใน publication; เช็กได้ด้วย `select tablename from pg_publication_tables where pubname = 'supabase_realtime'`) และเปิด RLS Public สำหรับ `SELECT`, `INSERT`, `UPDATE` เรียบร้อยแล้ว
 
 > **Setup:** ตาราง/คอลัมน์ใหม่ทั้งหมดอยู่ใน `supabase_setup.sql` (รันซ้ำได้) — ต้องรันใน Supabase SQL Editor ก่อน ไม่งั้นท็อปปิ้งใช้รายการสำรอง และโปรโมชั่น/แต้มจะไม่ทำงาน
 
