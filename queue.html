@@ -61,12 +61,22 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpram5hbWxjbmZmc3VxenZrem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTk3MjIsImV4cCI6MjEwNTI5NTcyMn0.yUCmqbe5_tjsOBNEfx7qPXkmUiuoL5IX_y-tdjJuITY";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // คิวที่เสร็จแล้วโชว์ "รับได้เลย" ไว้กี่นาที แล้วหายไปเอง
+        const READY_SHOW_MINUTES = 30;
+
+        function startOfTodayIso() {
+            const d = new Date();
+            const day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            return day + 'T00:00:00+07:00';
+        }
+
         async function fetchQueue() {
             try {
                 const { data, error } = await supabaseClient
                     .from('orders')
-                    .select('customer_name, order_id, status')
+                    .select('customer_name, order_id, status, created_at, done_at')
                     .in('status', ['Doing', 'Done']) // ดึงมาเฉพาะคิวที่กำลังทำ กับเสร็จแล้ว
+                    .gte('created_at', startOfTodayIso()) // เฉพาะของวันนี้ คิวเมื่อวานจะไม่ค้างบนจอ
                     .order('created_at', { ascending: false })
                     .limit(30);
 
@@ -77,6 +87,10 @@
             }
         }
 
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
         function renderQueue(orders) {
             const listDoing = document.getElementById('list-doing');
             const listDone = document.getElementById('list-done');
@@ -85,8 +99,13 @@
             listDone.innerHTML = '';
 
             const doingOrders = orders.filter(o => o.status === 'Doing');
-            // คิวเสร็จแล้ว โชว์แค่ 5 คิวล่าสุดเพื่อไม่ให้ล้นจอ
-            const doneOrders = orders.filter(o => o.status === 'Done').slice(0, 5); 
+            // คิวเสร็จแล้ว โชว์เฉพาะที่เสร็จภายใน READY_SHOW_MINUTES นาที และไม่เกิน 5 คิวล่าสุดเพื่อไม่ให้ล้นจอ
+            // (ออเดอร์เก่าที่ยังไม่มี done_at ใช้เวลาสั่งแทน)
+            const cutoff = Date.now() - READY_SHOW_MINUTES * 60 * 1000;
+            const doneOrders = orders
+                .filter(o => o.status === 'Done' && new Date(o.done_at || o.created_at).getTime() >= cutoff)
+                .sort((a, b) => new Date(b.done_at || b.created_at) - new Date(a.done_at || a.created_at))
+                .slice(0, 5);
 
             if (doingOrders.length === 0) listDoing.innerHTML = '<div style="text-align:center; color:#CCC; font-size:32px; margin-top:40px;">ยังไม่มีคิวที่กำลังทำ</div>';
             if (doneOrders.length === 0) listDone.innerHTML = '<div style="text-align:center; color:#CCC; font-size:32px; margin-top:40px;">ยังไม่มีคิวที่รอรับ</div>';
@@ -96,7 +115,7 @@
                 const name = order.customer_name || `คิว ${order.order_id.slice(-4)}`;
                 listDoing.insertAdjacentHTML('beforeend', `
                     <div class="q-item q-doing">
-                        <span>👤 ${name}</span>
+                        <span>👤 ${escapeHtml(name)}</span>
                     </div>
                 `);
             });
@@ -105,7 +124,7 @@
                 const name = order.customer_name || `คิว ${order.order_id.slice(-4)}`;
                 listDone.insertAdjacentHTML('beforeend', `
                     <div class="q-item q-done">
-                        <span>🎉 ${name}</span>
+                        <span>🎉 ${escapeHtml(name)}</span>
                         <span>รับได้เลย</span>
                     </div>
                 `);
@@ -123,6 +142,8 @@
 
         fetchQueue();
         setupRealtime();
+        // โหลดใหม่ทุกนาที ให้คิวที่ครบเวลาหายไปเอง แม้ไม่มีออเดอร์ใหม่เข้ามา
+        setInterval(fetchQueue, 60 * 1000);
     </script>
 </body>
 </html>

@@ -104,3 +104,7 @@ create policy "menu-images public read" on storage.objects for select using (buc
 create policy "menu-images public insert" on storage.objects for insert with check (bucket_id = 'menu-images');
 create policy "menu-images public update" on storage.objects for update using (bucket_id = 'menu-images');
 create policy "menu-images public delete" on storage.objects for delete using (bucket_id = 'menu-images');
+
+-- ---------- 8. เวลาที่ทำออเดอร์เสร็จ (ใช้กับจอคิว) ----------
+-- admin.html ใส่ค่านี้ตอนกด "ออเดอร์เสร็จแล้ว" — queue.html โชว์ "รับได้เลย" 30 นาทีนับจากเวลานี้
+alter table public.orders add column if not exists done_at timestamptz;

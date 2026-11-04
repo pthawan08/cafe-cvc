@@ -105,11 +105,20 @@
             return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
+        function startOfTodayIso() {
+            const d = new Date();
+            const day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            return day + 'T00:00:00+07:00';
+        }
+
         async function fetchOrders() {
             try {
+                // ออเดอร์ของวันนี้ทั้งหมด + ออเดอร์ที่ยังไม่เสร็จจากวันก่อน (กันออเดอร์ตกหล่น)
+                // ขึ้นวันใหม่ คอลัมน์ "เสร็จแล้ว" จะเริ่มว่าง ข้อมูลเก่ายังอยู่ในฐานข้อมูลครบ
                 const { data, error } = await supabaseClient
                     .from('orders')
                     .select('*')
+                    .or(`created_at.gte.${startOfTodayIso()},status.in.(New,Doing)`)
                     .order('created_at', { ascending: false })
                     .limit(50);
 
@@ -191,9 +200,13 @@
                 btn.innerText = "กำลังอัปเดต... ⏳";
                 btn.disabled = true;
 
+                // บันทึกเวลาที่ทำเสร็จ ให้จอคิวรู้ว่าต้องโชว์ "รับได้เลย" ถึงเมื่อไร
+                const changes = { status: newStatus };
+                if (newStatus === 'Done') changes.done_at = new Date().toISOString();
+
                 const { error } = await supabaseClient
                     .from('orders')
-                    .update({ status: newStatus })
+                    .update(changes)
                     .eq('order_id', orderId);
 
                 if (error) throw error;
@@ -255,6 +268,8 @@
         document.getElementById('receipt-width').value = getReceiptWidth();
         fetchOrders();
         setupRealtime();
+        // โหลดใหม่ทุก 5 นาที ให้บอร์ดเปลี่ยนเป็นของวันใหม่เองหลังเที่ยงคืน
+        setInterval(fetchOrders, 5 * 60 * 1000);
     </script>
 </body>
 </html>
