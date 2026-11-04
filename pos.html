@@ -6,20 +6,27 @@
     <title>CVC Cafe - POS หน้าร้าน</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="receipt.js"></script>
     <style>
-        :root { --primary: #A07855; --bg: #FBF9F6; --text: #4A4A4A; --light: #F2EFE9; --accent: #D5BDAF; }
+        :root { --primary: #A07855; --bg: #FBF9F6; --text: #4A4A4A; --light: #F2EFE9; --accent: #D5BDAF; --new: #E74C3C; --done: #27AE60; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Kanit', sans-serif; }
         body { background-color: #E8E4DD; display: flex; justify-content: center; color: var(--text); }
-        
+
         /* ขยายขนาดสำหรับหน้าจอ iPad/Tablet */
         #app { width: 100%; max-width: 600px; background-color: var(--bg); min-height: 100vh; position: relative; padding-bottom: 90px; box-shadow: 0 0 20px rgba(0,0,0,0.05); overflow-x: hidden;}
-        
+
         .header { padding: 25px 20px 15px; display: flex; justify-content: space-between; align-items: center; background: white; border-bottom: 2px solid #F0EAE1;}
         .user-greeting { font-size: 20px; font-weight: 600; color: var(--primary); }
         .user-greeting span { font-size: 14px; font-weight: 400; color: #888; display: block; }
-        
+        .header-links { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+        .header-links a { font-size: 14px; color: #888; text-decoration: none; }
+        .header-links select { font-size: 13px; padding: 4px 8px; border: 1px solid #E5E5E5; border-radius: 8px; color: #666; background: white; }
+
+        .search-input { display: block; width: calc(100% - 40px); margin: 20px 20px 0; padding: 12px 18px; border: 1px solid #F0EAE1; border-radius: 25px; font-size: 16px; outline: none; background: white; }
+        .search-input:focus { border-color: var(--primary); }
+
         .section-title { margin: 20px 20px 12px; font-size: 18px; font-weight: 600; color: #333; }
-        
+
         .categories { display: flex; gap: 12px; padding: 0 20px 20px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
         .categories::-webkit-scrollbar { display: none; }
         .cat-item { display: inline-block; padding: 12px 20px; background: white; border-radius: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03); font-size: 15px; cursor: pointer; border: 1px solid #F0EAE1; color: #666; transition: 0.2s;}
@@ -28,7 +35,8 @@
         .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 0 20px 20px; }
         .menu-card { background: white; border-radius: 16px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); position: relative; cursor: pointer; border: 1px solid #F5F2EC; transition: transform 0.2s; display: flex; flex-direction: column; justify-content: space-between;}
         .menu-card:active { transform: scale(0.97); }
-        .menu-img { width: 100%; height: 120px; background: var(--light); border-radius: 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; font-size: 45px; }
+        .menu-img { width: 100%; height: 120px; background: var(--light); border-radius: 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; font-size: 45px; overflow: hidden; }
+        .menu-img img { width: 100%; height: 100%; object-fit: cover; }
         .menu-name { font-size: 16px; font-weight: 500; margin-bottom: 4px; line-height: 1.3; color: #333; }
         .menu-price { font-size: 15px; font-weight: 400; color: #888; }
         .menu-price span { font-size: 18px; font-weight: 600; color: var(--primary); }
@@ -41,33 +49,43 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; display: none; justify-content: center; align-items: flex-end; backdrop-filter: blur(2px); }
         .modal-content { width: 100%; max-width: 600px; background: white; border-radius: 28px 28px 0 0; padding: 25px 24px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 -5px 20px rgba(0,0,0,0.1); }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        
+
         .modal-header { font-size: 24px; font-weight: 600; margin-bottom: 4px; color: #333; }
         .modal-price { font-size: 22px; font-weight: 600; color: var(--primary); margin-bottom: 24px; }
-        
+
         .option-group { margin-bottom: 24px; }
         .option-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; color: #444;}
-        
+
         .radio-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         .radio-btn { border: 1px solid #E5E5E5; border-radius: 12px; padding: 12px 5px; text-align: center; font-size: 15px; cursor: pointer; color: #666; transition: 0.2s; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center;}
         .radio-btn span { font-size: 13px; color: #999; margin-top: 4px;}
         .radio-btn.selected { background: var(--bg); border-color: var(--primary); color: var(--primary); font-weight: 500; box-shadow: 0 2px 6px rgba(160, 120, 85, 0.1); }
         .radio-btn.selected span { color: var(--primary); }
-        
+
         .checkbox-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #F5F2EC; font-size: 16px; color: #555;}
         .checkbox-row input { transform: scale(1.4); margin-right: 12px; accent-color: var(--primary); }
-        
+
         .qty-control { display: flex; justify-content: center; align-items: center; gap: 24px; margin: 30px 0; }
         .qty-btn { width: 50px; height: 50px; border-radius: 50%; border: 1px solid #E5E5E5; background: white; font-size: 24px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #555; transition: 0.2s;}
         .qty-btn:active { background: var(--light); }
-        
+
         .add-cart-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 18px; border-radius: 16px; font-size: 18px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 12px rgba(160, 120, 85, 0.3); transition: 0.2s;}
-        
-        .customer-input { width: 100%; padding: 15px; border: 2px solid #E5E5E5; border-radius: 12px; font-size: 16px; margin-bottom: 20px; outline: none; transition: 0.2s; font-family: 'Kanit', sans-serif;}
+        .add-cart-btn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
+        .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); box-shadow: none; margin-top: 12px; }
+
+        .customer-input { width: 100%; padding: 15px; border: 2px solid #E5E5E5; border-radius: 12px; font-size: 16px; margin-bottom: 15px; outline: none; transition: 0.2s; font-family: 'Kanit', sans-serif;}
         .customer-input:focus { border-color: var(--primary); }
 
-        .cart-item-row { display: flex; justify-content: space-between; border-bottom: 1px solid #F5F2EC; padding: 15px 0;}
+        .pay-grid { grid-template-columns: 1fr 1fr; margin-bottom: 20px; }
+
+        .cart-item-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid #F5F2EC; padding: 15px 0;}
+        .remove-btn { border: none; background: #FDEDEC; color: var(--new); width: 34px; height: 34px; border-radius: 50%; font-size: 16px; cursor: pointer; flex-shrink: 0; }
         #loading { text-align: center; padding: 50px 20px; color: #888; font-weight: 300; }
+
+        .success-box { text-align: center; padding: 10px 0 0; }
+        .success-icon { font-size: 60px; }
+        .success-id { font-size: 15px; color: #888; margin: 6px 0 4px; }
+        .success-name { font-size: 28px; font-weight: 600; color: var(--primary); margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -78,17 +96,25 @@
             <span>CVC Cafe</span>
             📍 ระบบรับออเดอร์หน้าร้าน (POS)
         </div>
-        <a href="admin.html" style="font-size: 14px; color: #888; text-decoration: none;">กลับหน้าบอร์ด</a>
+        <div class="header-links">
+            <a href="admin.html">กลับหน้าบอร์ด</a>
+            <select id="receipt-width" onchange="setReceiptWidth(this.value)" title="ขนาดกระดาษใบเสร็จ">
+                <option value="80">🖨️ กระดาษ 80mm</option>
+                <option value="58">🖨️ กระดาษ 58mm</option>
+            </select>
+        </div>
     </div>
 
-    <div class="section-title" style="margin-top: 25px;">หมวดหมู่</div>
+    <input type="search" class="search-input" id="search-input" placeholder="🔍 ค้นหาเมนู..." oninput="applyFilters()">
+
+    <div class="section-title" style="margin-top: 20px;">หมวดหมู่</div>
     <div class="categories" id="category-tabs">
-        <div class="cat-item active" onclick="filterCategory('ทั้งหมด')">ทั้งหมด</div>
-        <div class="cat-item" onclick="filterCategory('กาแฟ')">☕ กาแฟ</div>
-        <div class="cat-item" onclick="filterCategory('ชา/นม')">🍵 ชา/นม</div>
-        <div class="cat-item" onclick="filterCategory('ชาผลไม้')">🍑 ชาผลไม้</div>
-        <div class="cat-item" onclick="filterCategory('สมูทตี้')">🥤 สมูทตี้</div>
-        <div class="cat-item" onclick="filterCategory('โซดา')">🍹 โซดา</div>
+        <div class="cat-item active" data-cat="ทั้งหมด" onclick="filterCategory('ทั้งหมด')">ทั้งหมด</div>
+        <div class="cat-item" data-cat="กาแฟ" onclick="filterCategory('กาแฟ')">☕ กาแฟ</div>
+        <div class="cat-item" data-cat="ชา/นม" onclick="filterCategory('ชา/นม')">🍵 ชา/นม</div>
+        <div class="cat-item" data-cat="ชาผลไม้" onclick="filterCategory('ชาผลไม้')">🍑 ชาผลไม้</div>
+        <div class="cat-item" data-cat="สมูทตี้" onclick="filterCategory('สมูทตี้')">🥤 สมูทตี้</div>
+        <div class="cat-item" data-cat="โซดา" onclick="filterCategory('โซดา')">🍹 โซดา</div>
     </div>
 
     <div class="section-title" id="menu-title">เมนูทั้งหมด</div>
@@ -111,7 +137,7 @@
         </div>
         <div class="modal-header" id="m-name">ชื่อเมนู</div>
         <div class="modal-price">฿<span id="m-price">0</span></div>
-        
+
         <div class="option-group" id="serve-type-group">
             <div class="option-title">ประเภท</div>
             <div class="radio-grid" id="serve-options"></div>
@@ -120,30 +146,23 @@
         <div class="option-group">
             <div class="option-title">ความหวาน</div>
             <div class="radio-grid" id="sweet-options">
-                <div class="radio-btn" onclick="selectRadio(this, 'sweet')">ไม่หวาน (0%)</div>
-                <div class="radio-btn" onclick="selectRadio(this, 'sweet')">หวานน้อย (50%)</div>
-                <div class="radio-btn selected" onclick="selectRadio(this, 'sweet')">ปกติ (100%)</div>
+                <div class="radio-btn" data-value="0%" onclick="selectRadio(this)">ไม่หวาน (0%)</div>
+                <div class="radio-btn" data-value="น้อย" onclick="selectRadio(this)">หวานน้อย (50%)</div>
+                <div class="radio-btn selected" data-value="ปกติ" onclick="selectRadio(this)">ปกติ (100%)</div>
             </div>
         </div>
 
-        <div class="option-group">
+        <div class="option-group" id="topping-group">
             <div class="option-title">ท็อปปิ้ง (เพิ่ม)</div>
-            <label class="checkbox-row">
-                <div><input type="checkbox" value="15" class="topping-cb" onchange="calcTotal()"> เพิ่มช็อตกาแฟ</div>
-                <div style="color:#888;">+15.-</div>
-            </label>
-            <label class="checkbox-row">
-                <div><input type="checkbox" value="10" class="topping-cb" onchange="calcTotal()"> ไข่มุกบราวน์ชูการ์</div>
-                <div style="color:#888;">+10.-</div>
-            </label>
+            <div id="topping-options"></div>
         </div>
-        
+
         <div class="qty-control">
             <button class="qty-btn" onclick="changeQty(-1)">-</button>
             <span style="font-size: 24px; font-weight: 500; width: 40px; text-align: center;" id="m-qty">1</span>
             <button class="qty-btn" onclick="changeQty(1)">+</button>
         </div>
-        
+
         <button class="add-cart-btn" onclick="addToCart()">เพิ่มลงบิล - ฿<span id="m-total">0</span></button>
     </div>
 </div>
@@ -155,9 +174,9 @@
             <button onclick="closeCart()" style="border:none; background:none; font-size:28px; color:#AAA; cursor:pointer;">✖</button>
         </div>
         <div class="modal-header">🛒 บิลสั่งซื้อ (Walk-in)</div>
-        
+
         <div id="cart-items" style="margin-top: 15px; max-height: 35vh; overflow-y: auto;"></div>
-        
+
         <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: 600; margin: 25px 0;">
             <span>ยอดชำระทั้งหมด:</span>
             <span style="color: var(--primary);">฿<span id="cart-total">0</span></span>
@@ -165,8 +184,32 @@
 
         <!-- ช่องพิมพ์ชื่อลูกค้าหน้าร้าน -->
         <input type="text" id="pos-customer-name" class="customer-input" placeholder="พิมพ์ชื่อลูกค้า หรือ ป้ายคิว (เช่น คุณเอก, คิว 05)">
-        
-        <button class="add-cart-btn" onclick="submitOrder()" id="submit-btn" style="background: #27AE60;">✅ ส่งออเดอร์เข้าครัว</button>
+
+        <div class="option-title">ช่องทางชำระเงิน</div>
+        <div class="radio-grid pay-grid" id="pay-options">
+            <div class="radio-btn selected" data-value="Cash" onclick="selectRadio(this)">💵 เงินสด</div>
+            <div class="radio-btn" data-value="Transfer" onclick="selectRadio(this)">📱 โอน / QR</div>
+        </div>
+
+        <label class="checkbox-row" style="border:none; padding: 0 0 18px;">
+            <div><input type="checkbox" id="auto-print" checked> พิมพ์ใบเสร็จอัตโนมัติหลังส่งออเดอร์</div>
+        </label>
+
+        <button class="add-cart-btn" onclick="submitOrder()" id="submit-btn" style="background: var(--done);">✅ ส่งออเดอร์เข้าครัว</button>
+    </div>
+</div>
+
+<!-- Modal 3: ส่งออเดอร์สำเร็จ + พิมพ์ใบเสร็จ -->
+<div class="modal-overlay" id="success-modal">
+    <div class="modal-content" style="padding-bottom: 40px;">
+        <div class="success-box">
+            <div class="success-icon">✅</div>
+            <div class="modal-header">ส่งออเดอร์เข้าครัวแล้ว</div>
+            <div class="success-id" id="success-id"></div>
+            <div class="success-name" id="success-name"></div>
+        </div>
+        <button class="add-cart-btn" onclick="printLastReceipt()">🖨️ พิมพ์ใบเสร็จ</button>
+        <button class="add-cart-btn btn-secondary" onclick="closeSuccess()">รับออเดอร์ถัดไป →</button>
     </div>
 </div>
 
@@ -175,100 +218,147 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpram5hbWxjbmZmc3VxenZrem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTk3MjIsImV4cCI6MjEwNTI5NTcyMn0.yUCmqbe5_tjsOBNEfx7qPXkmUiuoL5IX_y-tdjJuITY";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let allMenuItems = []; 
+    // ใช้แทนชั่วคราวถ้ายังไม่ได้สร้างตาราง toppings
+    const FALLBACK_TOPPINGS = [
+        { id: 'f1', name: 'เพิ่มช็อตกาแฟ', price: 15 },
+        { id: 'f2', name: 'ไข่มุกบราวน์ชูการ์', price: 10 }
+    ];
+
+    let allMenuItems = [];
+    let activeToppings = [];
+    let currentCategory = 'ทั้งหมด';
     let currentItem = {};
     let qty = 1;
     let basePrice = 0;
     let selectedServeType = '';
-    let cart = []; 
+    let cart = [];
+    let lastOrder = null;
+
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function renderIcon(imageUrl) {
+        if (imageUrl && /^https?:\/\//.test(imageUrl)) return `<img src="${escapeHtml(imageUrl)}" alt="">`;
+        return escapeHtml(imageUrl || '☕');
+    }
+
+    // รหัสวันที่ตามเวลาเครื่อง (ไทย) เช่น 261104 — ไม่ใช้ toISOString เพราะเป็นเวลา UTC
+    function localDateCode() {
+        const d = new Date();
+        return String(d.getFullYear()).slice(-2) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+    }
+
+    // ข้อความ 1 รายการตาม CRITICAL FORMAT RULE: "${qty}x ${name} (${serveType}) หวาน${sweet} (${toppings})"
+    function formatItemText(i) {
+        let text = `${i.qty}x ${i.name}`;
+        if (i.serveType) text += ` (${i.serveType})`;
+        text += ` หวาน${i.sweet}`;
+        if (i.toppings.length > 0) text += ` (${i.toppings.join(',')})`;
+        return text;
+    }
 
     async function fetchMenu() {
         try {
             const { data, error } = await supabaseClient
                 .from('menu')
                 .select('*')
-                .order('menu_id', { ascending: true }); 
+                .order('menu_id', { ascending: true });
 
             if (error) throw error;
             document.getElementById('loading').style.display = 'none';
-            allMenuItems = data; 
-            filterCategory('ทั้งหมด'); 
+            allMenuItems = data;
+            filterCategory(currentCategory);
         } catch (error) {
             document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ กรุณารีเฟรช";
         }
     }
 
+    async function fetchToppings() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('toppings')
+                .select('*')
+                .eq('is_active', true)
+                .order('id', { ascending: true });
+            if (error) throw error;
+            activeToppings = data;
+        } catch (error) {
+            console.warn('โหลดท็อปปิ้งไม่สำเร็จ ใช้รายการสำรอง', error);
+            activeToppings = FALLBACK_TOPPINGS;
+        }
+    }
+
     function filterCategory(categoryName) {
+        currentCategory = categoryName;
         document.querySelectorAll('.cat-item').forEach(tab => {
-            tab.classList.remove('active');
-            if (tab.innerText.includes(categoryName) || (categoryName === 'ทั้งหมด' && tab.innerText === 'ทั้งหมด')) {
-                tab.classList.add('active');
-            }
+            tab.classList.toggle('active', tab.dataset.cat === categoryName);
         });
-        document.getElementById('menu-title').innerText = categoryName === 'ทั้งหมด' ? 'เมนูทั้งหมด' : `หมวดหมู่: ${categoryName}`;
-        let filteredItems = categoryName === 'ทั้งหมด' ? allMenuItems : allMenuItems.filter(item => item.category && item.category.includes(categoryName));
-        renderMenu(filteredItems);
+        applyFilters();
+    }
+
+    function applyFilters() {
+        const keyword = document.getElementById('search-input').value.trim().toLowerCase();
+        let items = currentCategory === 'ทั้งหมด' ? allMenuItems : allMenuItems.filter(item => item.category && item.category.includes(currentCategory));
+        if (keyword) items = allMenuItems.filter(item => (item.name || '').toLowerCase().includes(keyword));
+
+        document.getElementById('menu-title').innerText = keyword
+            ? `ผลการค้นหา "${keyword}"`
+            : (currentCategory === 'ทั้งหมด' ? 'เมนูทั้งหมด' : `หมวดหมู่: ${currentCategory}`);
+        renderMenu(items);
     }
 
     function renderMenu(menuItems) {
         const container = document.getElementById('menu-container');
-        let html = "";
-        let hasActiveItems = false;
+        const activeItems = (menuItems || []).filter(item => item.is_active === true);
 
-        if (menuItems && menuItems.length > 0) {
-            menuItems.forEach(item => {
-                if(item.is_active === true) {
-                    hasActiveItems = true;
-                    const icon = item.image_url ? item.image_url : "☕"; 
-                    let startingPrice = item.price_hot || item.price_ice || item.price_frappe || 0;
-                    const itemData = encodeURIComponent(JSON.stringify(item));
-
-                    html += `
-                    <div class="menu-card" onclick="openModal('${itemData}')">
-                        <div>
-                            <div class="menu-img">${icon}</div>
-                            <div class="menu-name">${item.name}</div>
-                        </div>
-                        <div class="menu-price">เริ่มต้น <span>฿${startingPrice}</span></div>
-                        <button class="add-btn">+</button>
-                    </div>`;
-                }
-            });
-        }
-        container.innerHTML = hasActiveItems ? html : "<div style='grid-column: 1/-1; text-align: center; color: #888; margin-top: 20px;'>ไม่มีเมนูในหมวดหมู่นี้</div>";
+        container.innerHTML = activeItems.length === 0
+            ? "<div style='grid-column: 1/-1; text-align: center; color: #888; margin-top: 20px;'>ไม่มีเมนูในหมวดหมู่นี้</div>"
+            : activeItems.map(item => {
+                const startingPrice = item.price_hot || item.price_ice || item.price_frappe || 0;
+                return `
+                <div class="menu-card" onclick="openModal('${escapeHtml(item.menu_id)}')">
+                    <div>
+                        <div class="menu-img">${renderIcon(item.image_url)}</div>
+                        <div class="menu-name">${escapeHtml(item.name)}</div>
+                    </div>
+                    <div class="menu-price">เริ่มต้น <span>฿${startingPrice}</span></div>
+                    <button class="add-btn">+</button>
+                </div>`;
+            }).join('');
     }
 
-    function openModal(itemDataEncoded) {
-        const item = JSON.parse(decodeURIComponent(itemDataEncoded));
+    function renderToppingOptions() {
+        const group = document.getElementById('topping-group');
+        group.style.display = activeToppings.length ? 'block' : 'none';
+        document.getElementById('topping-options').innerHTML = activeToppings.map((t, idx) => `
+            <label class="checkbox-row">
+                <div><input type="checkbox" class="topping-cb" data-idx="${idx}" onchange="calcTotal()"> ${escapeHtml(t.name)}</div>
+                <div style="color:#888;">+${t.price}.-</div>
+            </label>`).join('');
+    }
+
+    function openModal(menuId) {
+        const item = allMenuItems.find(m => m.menu_id === menuId);
+        if (!item) return;
         currentItem = item;
         qty = 1;
         document.getElementById('m-name').innerText = item.name;
-        
-        let serveHtml = "";
-        let firstPriceSet = false;
 
-        if (item.price_hot) {
-            serveHtml += `<div class="radio-btn ${!firstPriceSet ? 'selected' : ''}" onclick="selectServeType(this, ${item.price_hot}, 'ร้อน')">ร้อน <span>฿${item.price_hot}</span></div>`;
-            if(!firstPriceSet) { basePrice = item.price_hot; selectedServeType = 'ร้อน'; firstPriceSet = true; }
-        }
-        if (item.price_ice) {
-            serveHtml += `<div class="radio-btn ${!firstPriceSet ? 'selected' : ''}" onclick="selectServeType(this, ${item.price_ice}, 'เย็น')">เย็น <span>฿${item.price_ice}</span></div>`;
-            if(!firstPriceSet) { basePrice = item.price_ice; selectedServeType = 'เย็น'; firstPriceSet = true; }
-        }
-        if (item.price_frappe) {
-            serveHtml += `<div class="radio-btn ${!firstPriceSet ? 'selected' : ''}" onclick="selectServeType(this, ${item.price_frappe}, 'ปั่น')">ปั่น <span>฿${item.price_frappe}</span></div>`;
-            if(!firstPriceSet) { basePrice = item.price_frappe; selectedServeType = 'ปั่น'; firstPriceSet = true; }
-        }
+        const serveTypes = [['ร้อน', item.price_hot], ['เย็น', item.price_ice], ['ปั่น', item.price_frappe]].filter(([, price]) => price);
+        basePrice = serveTypes.length ? serveTypes[0][1] : 0;
+        selectedServeType = serveTypes.length ? serveTypes[0][0] : '';
 
-        document.getElementById('serve-options').innerHTML = serveHtml;
+        document.getElementById('serve-options').innerHTML = serveTypes.map(([type, price], idx) =>
+            `<div class="radio-btn ${idx === 0 ? 'selected' : ''}" onclick="selectServeType(this, ${price}, '${type}')">${type} <span>฿${price}</span></div>`).join('');
         document.getElementById('m-price').innerText = basePrice;
-        document.getElementById('serve-type-group').style.display = serveHtml === "" ? "none" : "block";
+        document.getElementById('serve-type-group').style.display = serveTypes.length ? "block" : "none";
         document.getElementById('m-qty').innerText = qty;
-        
+
         document.getElementById('sweet-options').querySelectorAll('.radio-btn').forEach(btn => btn.classList.remove('selected'));
-        document.getElementById('sweet-options').lastElementChild.classList.add('selected'); 
-        
-        document.querySelectorAll('.topping-cb').forEach(cb => cb.checked = false);
+        document.getElementById('sweet-options').lastElementChild.classList.add('selected');
+
+        renderToppingOptions();
         document.getElementById('product-modal').style.display = 'flex';
         calcTotal();
     }
@@ -293,35 +383,43 @@
         calcTotal();
     }
 
+    function getCheckedToppings() {
+        return [...document.querySelectorAll('.topping-cb:checked')].map(cb => activeToppings[cb.dataset.idx]);
+    }
+
     function calcTotal() {
-        let toppingPrice = 0;
-        document.querySelectorAll('.topping-cb:checked').forEach(cb => { toppingPrice += parseInt(cb.value); });
+        const toppingPrice = getCheckedToppings().reduce((sum, t) => sum + t.price, 0);
         document.getElementById('m-total').innerText = (basePrice + toppingPrice) * qty;
     }
 
     function closeModal() { document.getElementById('product-modal').style.display = 'none'; }
 
     function addToCart() {
-        let sweet = document.querySelector('#sweet-options .selected').innerText.split(' ')[0];
-        let toppings = [];
-        let toppingPrice = 0;
-        
-        document.querySelectorAll('.topping-cb:checked').forEach(cb => {
-            toppings.push(cb.parentElement.innerText.trim().replace(/\+.*$/, '').trim());
-            toppingPrice += parseInt(cb.value);
-        });
+        const sweet = document.querySelector('#sweet-options .selected').dataset.value;
+        const toppings = getCheckedToppings();
+        const toppingPrice = toppings.reduce((sum, t) => sum + t.price, 0);
 
         cart.push({
             name: currentItem.name,
             serveType: selectedServeType,
             sweet: sweet,
-            toppings: toppings,
+            toppings: toppings.map(t => t.name),
             qty: qty,
             price: (basePrice + toppingPrice) * qty
         });
 
-        document.getElementById('cart-count').innerText = `${cart.length} รายการ`;
+        updateCartBadge();
         closeModal();
+    }
+
+    function updateCartBadge() {
+        document.getElementById('cart-count').innerText = `${cart.length} รายการ`;
+    }
+
+    function removeFromCart(index) {
+        cart.splice(index, 1);
+        updateCartBadge();
+        openCart();
     }
 
     function openCart() {
@@ -333,20 +431,21 @@
             document.getElementById('submit-btn').disabled = true;
         } else {
             document.getElementById('submit-btn').disabled = false;
-            cart.forEach((item) => {
+            cart.forEach((item, index) => {
                 total += item.price;
-                let topText = item.toppings.length > 0 ? `<br><span style="font-size:13px; color:#888;">+ ${item.toppings.join(', ')}</span>` : '';
+                let topText = item.toppings.length > 0 ? `<br><span style="font-size:13px; color:#888;">+ ${escapeHtml(item.toppings.join(', '))}</span>` : '';
                 html += `
                 <div class="cart-item-row">
-                    <div>
-                        <div style="font-weight: 500; font-size:16px; color:#333;">${item.qty}x ${item.name} ${item.serveType ? '('+item.serveType+')' : ''}</div>
-                        <div style="font-size: 14px; color: #888;">หวาน: ${item.sweet} ${topText}</div>
+                    <div style="flex:1;">
+                        <div style="font-weight: 500; font-size:16px; color:#333;">${item.qty}x ${escapeHtml(item.name)} ${item.serveType ? '('+item.serveType+')' : ''}</div>
+                        <div style="font-size: 14px; color: #888;">หวาน${item.sweet} ${topText}</div>
                     </div>
                     <div style="font-weight: 600; font-size:16px; color: var(--primary);">฿${item.price}</div>
+                    <button class="remove-btn" onclick="removeFromCart(${index})" title="ลบรายการนี้">✕</button>
                 </div>`;
             });
         }
-        
+
         document.getElementById('cart-items').innerHTML = html;
         document.getElementById('cart-total').innerText = total;
         document.getElementById('cart-modal').style.display = 'flex';
@@ -358,43 +457,50 @@
 
     async function submitOrder() {
         if (cart.length === 0) return;
-        
+
         const btn = document.getElementById('submit-btn');
         // ดึงชื่อที่แคชเชียร์พิมพ์มา ถ้าไม่ได้พิมพ์ให้ใช้คำว่า "ลูกค้าหน้าร้าน"
         const customerName = document.getElementById('pos-customer-name').value.trim() || "ลูกค้าหน้าร้าน";
+        const paymentMethod = document.querySelector('#pay-options .selected').dataset.value;
 
         btn.innerText = "กำลังส่งเข้าครัว... ⏳";
         btn.disabled = true;
 
         try {
-            const dateStr = new Date().toISOString().slice(2,10).replace(/-/g, '');
-            const randomNum = Math.floor(1000 + Math.random() * 9000); 
-            const orderId = `POS-${dateStr}-${randomNum}`; // ใช้รหัสขึ้นต้นด้วย POS เพื่อแยกจากออเดอร์ไลน์
-            
-            let total = cart.reduce((sum, item) => sum + item.price, 0);
-            let orderDetails = cart.map(i => `${i.qty}x ${i.name} ${i.serveType ? '('+i.serveType+')' : ''} หวาน${i.sweet} ${i.toppings.length > 0 ? '('+i.toppings.join(',')+')' : ''}`).join(' | ');
+            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            const orderId = `POS-${localDateCode()}-${randomNum}`; // ใช้รหัสขึ้นต้นด้วย POS เพื่อแยกจากออเดอร์ไลน์
 
-            const { data, error } = await supabaseClient
-                .from('orders')
-                .insert([
-                    { 
-                        order_id: orderId, 
-                        customer_uid: 'walk-in', 
-                        customer_name: customerName, 
-                        order_details: orderDetails,
-                        total_price: total,
-                        status: 'New',
-                        payment_method: 'Cash'
-                    }
-                ]);
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            const orderDetails = cart.map(formatItemText).join(' | ');
 
+            const newOrder = {
+                order_id: orderId,
+                customer_uid: 'walk-in',
+                customer_name: customerName,
+                order_details: orderDetails,
+                total_price: total,
+                status: 'New',
+                payment_method: paymentMethod
+            };
+
+            const { error } = await supabaseClient.from('orders').insert([newOrder]);
             if (error) throw error;
 
-            alert("✅ ส่งออเดอร์เข้าครัวเรียบร้อย!");
-            cart = []; 
-            document.getElementById('cart-count').innerText = "0 รายการ";
+            lastOrder = {
+                order: { ...newOrder, created_at: new Date().toISOString() },
+                items: cart.map(i => ({ label: formatItemText(i), price: i.price }))
+            };
+
+            cart = [];
+            updateCartBadge();
             document.getElementById('pos-customer-name').value = "";
             closeCart();
+
+            document.getElementById('success-id').innerText = `เลขที่ ${orderId} • ฿${total}`;
+            document.getElementById('success-name').innerText = customerName;
+            document.getElementById('success-modal').style.display = 'flex';
+
+            if (document.getElementById('auto-print').checked) printLastReceipt();
 
         } catch (error) {
             console.error(error);
@@ -405,7 +511,29 @@
         }
     }
 
+    function printLastReceipt() {
+        if (lastOrder) printReceipt(lastOrder.order, lastOrder.items);
+    }
+
+    function closeSuccess() {
+        document.getElementById('success-modal').style.display = 'none';
+        document.getElementById('search-input').value = '';
+        filterCategory('ทั้งหมด');
+    }
+
+    // ท็อปปิ้งเปิด/ปิดจากหลังร้าน อัปเดตทันทีโดยไม่ต้องรีเฟรช
+    function setupRealtime() {
+        supabaseClient
+            .channel('pos-live')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'toppings' }, fetchToppings)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'menu' }, fetchMenu)
+            .subscribe();
+    }
+
+    document.getElementById('receipt-width').value = getReceiptWidth();
+    fetchToppings();
     fetchMenu();
+    setupRealtime();
 </script>
 </body>
 </html>
